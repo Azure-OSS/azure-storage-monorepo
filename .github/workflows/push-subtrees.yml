@@ -9,26 +9,30 @@ jobs:
   push-subtrees:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+      - name: Checkout monorepo
+        uses: actions/checkout@v3
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
 
       - name: Push common
         run: |
-          git remote add common https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Azure-OSS/azure-storage-common.git
+          git remote add common https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Azure-OSS/azure-storage-common.git
           git subtree push --prefix=src/Common common main
 
       - name: Push blob
         run: |
-          git remote add common https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Azure-OSS/azure-storage-php.git
+          git remote add common https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Azure-OSS/azure-storage-php.git
           git subtree push --prefix=src/Blob blob main
 
       - name: Push blob-flysystem
         run: |
-          git remote add common https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Azure-OSS/azure-storage-php-adapter-flysystem.git
+          git remote add common https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Azure-OSS/azure-storage-php-adapter-flysystem.git
           git subtree push --prefix=src/BlobFlysystem blob-flysystem main
 
       - name: Push blob-laravel
         run: |
-          git remote add common https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Azure-OSS/azure-storage-php-adapter-laravel.git
+          git remote add common https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Azure-OSS/azure-storage-php-adapter-laravel.git
           git subtree push --prefix=src/BlobLaravel blob-laravel main
