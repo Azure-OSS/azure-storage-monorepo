@@ -8,14 +8,6 @@ on:
 jobs:
   push-subtrees:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        subtree:
-          - { prefix: "src/Common", repo: "azure-storage-common.git", key: "DEPLOY_KEY_COMMON" }
-          - { prefix: "src/Blob", repo: "azure-storage-php.git", key: "DEPLOY_KEY_BLOB" }
-          - { prefix: "src/BlobFlysystem", repo: "azure-storage-php-adapter-flysystem.git", key: "DEPLOY_KEY_BLOB_FLYSYSTEM" }
-          - { prefix: "src/BlobLaravel", repo: "azure-storage-php-adapter-laravel.git", key: "DEPLOY_KEY_BLOB_LARAVEL" }
-
     steps:
       - name: Checkout monorepo
         uses: actions/checkout@v3
@@ -25,38 +17,46 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Setup SSH
+      - name: Push common
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "${{ secrets[matrix.subtree.key] }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.DEPLOY_KEY_COMMON }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git remote add common git@github.com:Azure-OSS/azure-storage-common.git
+          git subtree split --prefix=src/Common -b split-common
+          git push common split-common:main --force
 
-      - name: Push subtree if changed
+      - name: Push blob
         run: |
-          set -e
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_BLOB }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git remote add blob git@github.com:Azure-OSS/azure-storage-php.git
+          git subtree split --prefix=src/Blob -b split-blob
+          git push blob split-blob:main --force
 
-          PREFIX="${{ matrix.subtree.prefix }}"
-          REPO="${{ matrix.subtree.repo }}"
-          REMOTE_NAME="${REPO%.git}"  # Use repo name (without .git) as remote alias
+      - name: Push blob-flysystem
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_BLOB_FLYSYSTEM }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git remote add blob-flysystem git@github.com:Azure-OSS/azure-storage-php-adapter-flysystem.git
+          git subtree split --prefix=src/BlobFlysystem -b split-blob-flysystem
+          git push blob-flysystem split-blob-flysystem:main --force
 
-          # Add remote if it doesn't exist
-          if ! git remote | grep -q "^$REMOTE_NAME$"; then
-            git remote add $REMOTE_NAME git@github.com:Azure-OSS/$REPO
-          fi
-
-          # Split subtree
-          SPLIT_BRANCH="split-$REMOTE_NAME"
-          git subtree split --prefix=$PREFIX -b $SPLIT_BRANCH || true
-
-          # Push only if there are commits to push
-          if git log $REMOTE_NAME/main..$SPLIT_BRANCH --oneline | grep .; then
-            echo "Pushing $PREFIX to $REMOTE_NAME..."
-            GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" git push $REMOTE_NAME $SPLIT_BRANCH:main --force
-          else
-            echo "No changes in $PREFIX. Skipping push."
-          fi
-
-          # Clean up
-          git branch -D $SPLIT_BRANCH || true
+      - name: Push blob-laravel
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_BLOB_LARAVEL }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git remote add blob-laravel git@github.com:Azure-OSS/azure-storage-php-adapter-laravel.git
+          git subtree split --prefix=src/BlobLaravel -b split-blob-laravel
+          git push blob-laravel split-blob-laravel:main --force
