@@ -12,22 +12,43 @@ jobs:
       - name: Checkout monorepo
         uses: actions/checkout@v3
 
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Push common
         run: |
-          git remote add common https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Azure-OSS/azure-storage-common.git
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_COMMON }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git remote add common git@github.com:Azure-OSS/azure-storage-common.git
           git subtree push --prefix=src/Common common main
 
       - name: Push blob
         run: |
-          git remote add blob https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Azure-OSS/azure-storage-php.git
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_BLOB }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git remote add blob git@github.com:Azure-OSS/azure-storage-php.git
           git subtree push --prefix=src/Blob blob main
 
       - name: Push blob-flysystem
         run: |
-          git remote add blob-flysystem https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Azure-OSS/azure-storage-php-adapter-flysystem.git
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_BLOB_FLYSYSTEM }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git remote add blob-flysystem git@github.com:Azure-OSS/azure-storage-php-adapter-flysystem.git
           git subtree push --prefix=src/BlobFlysystem blob-flysystem main
 
       - name: Push blob-laravel
         run: |
-          git remote add blob-laravel https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Azure-OSS/azure-storage-php-adapter-laravel.git
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_BLOB_LARAVEL }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git remote add blob-laravel git@github.com:Azure-OSS/azure-storage-php-adapter-laravel.git
           git subtree push --prefix=src/BlobLaravel blob-laravel main
