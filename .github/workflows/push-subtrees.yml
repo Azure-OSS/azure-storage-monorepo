@@ -1,0 +1,35 @@
+name: Push Subtrees
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  push-subtrees:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Push common
+        run: |
+          git subtree push --prefix=src/Common common main
+
+      - name: Push blob
+        run: |
+          git subtree push --prefix=src/Blob blob main
+
+      - name: Push blob-flysystem
+        run: |
+          git subtree push --prefix=src/BlobFlysystem blob-flysystem main
+
+      - name: Push blob-laravel
+        run: |
+          git subtree push --prefix=src/BlobLaravel blob-laravel main
