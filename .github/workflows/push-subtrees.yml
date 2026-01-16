@@ -19,11 +19,15 @@ jobs:
 
       - name: Set up SSH agent
         run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
           eval "$(ssh-agent -s)"
           echo "${{ secrets.DEPLOY_KEY_COMMON }}" | tr -d '\r' | ssh-add -
           echo "${{ secrets.DEPLOY_KEY_BLOB }}" | tr -d '\r' | ssh-add -
           echo "${{ secrets.DEPLOY_KEY_BLOB_FLYSYSTEM }}" | tr -d '\r' | ssh-add -
           echo "${{ secrets.DEPLOY_KEY_BLOB_LARAVEL }}" | tr -d '\r' | ssh-add -
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
 
       - name: Push common
         run: |
