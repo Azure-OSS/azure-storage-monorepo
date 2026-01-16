@@ -17,38 +17,46 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Set up SSH agent
+      - name: Push common
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          eval "$(ssh-agent -s)"
-          echo "${{ secrets.DEPLOY_KEY_COMMON }}" | tr -d '\r' | ssh-add -
-          echo "${{ secrets.DEPLOY_KEY_BLOB }}" | tr -d '\r' | ssh-add -
-          echo "${{ secrets.DEPLOY_KEY_BLOB_FLYSYSTEM }}" | tr -d '\r' | ssh-add -
-          echo "${{ secrets.DEPLOY_KEY_BLOB_LARAVEL }}" | tr -d '\r' | ssh-add -
+          echo "${{ secrets.DEPLOY_KEY_COMMON }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
           ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-
-      - name: Push common
-        run: |
           git remote add common git@github.com:Azure-OSS/azure-storage-common.git
           git subtree split --prefix=src/Common -b split-common
           git push common split-common:main --force
 
       - name: Push blob
         run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_BLOB }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
           git remote add blob git@github.com:Azure-OSS/azure-storage-php.git
           git subtree split --prefix=src/Blob -b split-blob
           git push blob split-blob:main --force
 
       - name: Push blob-flysystem
         run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_BLOB_FLYSYSTEM }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
           git remote add blob-flysystem git@github.com:Azure-OSS/azure-storage-php-adapter-flysystem.git
           git subtree split --prefix=src/BlobFlysystem -b split-blob-flysystem
           git push blob-flysystem split-blob-flysystem:main --force
 
       - name: Push blob-laravel
         run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY_BLOB_LARAVEL }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
           git remote add blob-laravel git@github.com:Azure-OSS/azure-storage-php-adapter-laravel.git
           git subtree split --prefix=src/BlobLaravel -b split-blob-laravel
           git push blob-laravel split-blob-laravel:main --force
