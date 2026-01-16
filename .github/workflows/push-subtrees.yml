@@ -24,7 +24,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           git remote add common git@github.com:Azure-OSS/azure-storage-common.git
-          git subtree push --prefix=src/Common common main
+          git subtree push --prefix=src/Common common main --force
 
       - name: Push blob
         run: |
@@ -33,7 +33,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           git remote add blob git@github.com:Azure-OSS/azure-storage-php.git
-          git subtree push --prefix=src/Blob blob main
+          git subtree push --prefix=src/Blob blob main --force
 
       - name: Push blob-flysystem
         run: |
@@ -42,7 +42,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           git remote add blob-flysystem git@github.com:Azure-OSS/azure-storage-php-adapter-flysystem.git
-          git subtree push --prefix=src/BlobFlysystem blob-flysystem main
+          git subtree push --prefix=src/BlobFlysystem blob-flysystem main --force
 
       - name: Push blob-laravel
         run: |
@@ -51,4 +51,4 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           git remote add blob-laravel git@github.com:Azure-OSS/azure-storage-php-adapter-laravel.git
-          git subtree push --prefix=src/BlobLaravel blob-laravel main
+          git subtree push --prefix=src/BlobLaravel blob-laravel main --force
