@@ -30,11 +30,17 @@ abstract class BlobFeatureTestCase extends TestCase
         }
     }
 
+    /**
+     * @phpstan-assert-if-true !null $this->secondaryServiceClient
+     */
     protected function hasSecondaryStorageAccount(): bool
     {
         return $this->secondaryServiceClient !== null;
     }
 
+    /**
+     * @phpstan-assert !null $this->secondaryServiceClient
+     */
     protected function requireSecondaryStorageAccount(): void
     {
         if (! $this->hasSecondaryStorageAccount()) {
@@ -57,13 +63,6 @@ abstract class BlobFeatureTestCase extends TestCase
         foreach ($containerClient->getBlobs() as $blob) {
             $containerClient->getBlobClient($blob->name)->delete();
         }
-    }
-
-    protected function getSecondaryServiceClient(): BlobServiceClient
-    {
-        $this->requireSecondaryStorageAccount();
-
-        return $this->secondaryServiceClient;
     }
 
     protected function isUsingSimulator(): bool

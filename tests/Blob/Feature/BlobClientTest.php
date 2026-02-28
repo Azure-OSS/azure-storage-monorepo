@@ -43,10 +43,18 @@ final class BlobClientTest extends BlobFeatureTestCase
         $this->cleanContainer($this->containerClient->containerName);
 
         if ($this->hasSecondaryStorageAccount()) {
-            $this->secondaryContainerClient = $this->getSecondaryServiceClient()->getContainerClient('blobclient-secondary');
+            $this->secondaryContainerClient = $this->secondaryServiceClient->getContainerClient('blobclient-secondary');
             $this->secondaryBlobClient = $this->secondaryContainerClient->getBlobClient('some/file.txt');
-            $this->cleanContainer($this->secondaryContainerClient->containerName, $this->getSecondaryServiceClient());
+            $this->cleanContainer($this->secondaryContainerClient->containerName, $this->secondaryServiceClient);
         }
+    }
+
+    /**
+     * @phpstan-assert !null $this->secondaryBlobClient
+     */
+    protected function requireSecondaryStorageAccount(): void
+    {
+        parent::requireSecondaryStorageAccount();
     }
 
     #[Test]
@@ -472,12 +480,14 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->requireSecondaryStorageAccount();
 
+        $secondaryBlobClient = $this->secondaryBlobClient;
+
         // Create a 10MB stream
-        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) {
-            $this->secondaryBlobClient->upload($largeFile);
+        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) use ($secondaryBlobClient) {
+            $secondaryBlobClient->upload($largeFile);
         });
 
-        $sourceSas = $this->secondaryBlobClient->generateSasUri(
+        $sourceSas = $secondaryBlobClient->generateSasUri(
             BlobSasBuilder::new()
                 ->setPermissions(new BlobSasPermissions(read: true))
                 ->setExpiresOn((new \DateTime)->modify('+ 1min')),
@@ -489,7 +499,7 @@ final class BlobClientTest extends BlobFeatureTestCase
 
         self::assertEquals(CopyStatus::SUCCESS, $properties->copyStatus);
 
-        $sourceContent = $this->secondaryBlobClient->downloadStreaming()->content->getContents();
+        $sourceContent = $secondaryBlobClient->downloadStreaming()->content->getContents();
         $targetContent = $this->blobClient->downloadStreaming()->content->getContents();
 
         self::assertEquals($sourceContent, $targetContent);
@@ -501,12 +511,14 @@ final class BlobClientTest extends BlobFeatureTestCase
         $this->markTestSkippedWhenUsingSimulator();
         $this->requireSecondaryStorageAccount();
 
+        $secondaryBlobClient = $this->secondaryBlobClient;
+
         // Create a 10MB stream to increase the chance of pending state
-        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) {
-            $this->secondaryBlobClient->upload($largeFile);
+        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) use ($secondaryBlobClient) {
+            $secondaryBlobClient->upload($largeFile);
         });
 
-        $sourceSas = $this->secondaryBlobClient->generateSasUri(
+        $sourceSas = $secondaryBlobClient->generateSasUri(
             BlobSasBuilder::new()
                 ->setPermissions(new BlobSasPermissions(read: true))
                 ->setExpiresOn((new \DateTime)->modify('+ 1min')),
