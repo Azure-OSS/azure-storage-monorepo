@@ -47,15 +47,23 @@ abstract class BlobFeatureTestCase extends TestCase
         return substr(md5((string) mt_rand()), 0, 7);
     }
 
-    protected function cleanContainer(string $containerName): void
+    protected function cleanContainer(string $containerName, ?BlobServiceClient $serviceClient = null): void
     {
-        $containerClient = $this->serviceClient->getContainerClient($containerName);
+        $client = $serviceClient ?? $this->serviceClient;
+        $containerClient = $client->getContainerClient($containerName);
 
         $containerClient->createIfNotExists();
 
         foreach ($containerClient->getBlobs() as $blob) {
             $containerClient->getBlobClient($blob->name)->delete();
         }
+    }
+
+    protected function getSecondaryServiceClient(): BlobServiceClient
+    {
+        $this->requireSecondaryStorageAccount();
+
+        return $this->secondaryServiceClient;
     }
 
     protected function isUsingSimulator(): bool

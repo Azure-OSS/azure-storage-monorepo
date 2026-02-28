@@ -31,12 +31,22 @@ final class BlobClientTest extends BlobFeatureTestCase
 
     private BlobClient $blobClient;
 
+    private ?BlobContainerClient $secondaryContainerClient = null;
+
+    private ?BlobClient $secondaryBlobClient = null;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->containerClient = $this->serviceClient->getContainerClient('blobclient');
         $this->blobClient = $this->containerClient->getBlobClient('some/file.txt');
         $this->cleanContainer($this->containerClient->containerName);
+
+        if ($this->hasSecondaryStorageAccount()) {
+            $this->secondaryContainerClient = $this->getSecondaryServiceClient()->getContainerClient('blobclient-secondary');
+            $this->secondaryBlobClient = $this->secondaryContainerClient->getBlobClient('some/file.txt');
+            $this->cleanContainer($this->secondaryContainerClient->containerName, $this->getSecondaryServiceClient());
+        }
     }
 
     #[Test]
@@ -462,19 +472,12 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->requireSecondaryStorageAccount();
 
-        // Use secondary storage account for cross-account copy
-        $sourceContainerClient = $this->secondaryServiceClient->getContainerClient($this->randomContainerName());
-
-        $this->cleanContainer($sourceContainerClient->containerName);
-
-        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
-
         // Create a 10MB stream
-        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) use ($sourceBlobClient) {
-            $sourceBlobClient->upload($largeFile);
+        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) {
+            $this->secondaryBlobClient->upload($largeFile);
         });
 
-        $sourceSas = $sourceBlobClient->generateSasUri(
+        $sourceSas = $this->secondaryBlobClient->generateSasUri(
             BlobSasBuilder::new()
                 ->setPermissions(new BlobSasPermissions(read: true))
                 ->setExpiresOn((new \DateTime)->modify('+ 1min')),
@@ -486,7 +489,7 @@ final class BlobClientTest extends BlobFeatureTestCase
 
         self::assertEquals(CopyStatus::SUCCESS, $properties->copyStatus);
 
-        $sourceContent = $sourceBlobClient->downloadStreaming()->content->getContents();
+        $sourceContent = $this->secondaryBlobClient->downloadStreaming()->content->getContents();
         $targetContent = $this->blobClient->downloadStreaming()->content->getContents();
 
         self::assertEquals($sourceContent, $targetContent);
@@ -498,19 +501,12 @@ final class BlobClientTest extends BlobFeatureTestCase
         $this->markTestSkippedWhenUsingSimulator();
         $this->requireSecondaryStorageAccount();
 
-        // Use secondary storage account for cross-account copy which is slower
-        $sourceContainerClient = $this->secondaryServiceClient->getContainerClient($this->randomContainerName());
-
-        $this->cleanContainer($sourceContainerClient->containerName);
-
-        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
-
         // Create a 10MB stream to increase the chance of pending state
-        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) use ($sourceBlobClient) {
-            $sourceBlobClient->upload($largeFile);
+        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) {
+            $this->secondaryBlobClient->upload($largeFile);
         });
 
-        $sourceSas = $sourceBlobClient->generateSasUri(
+        $sourceSas = $this->secondaryBlobClient->generateSasUri(
             BlobSasBuilder::new()
                 ->setPermissions(new BlobSasPermissions(read: true))
                 ->setExpiresOn((new \DateTime)->modify('+ 1min')),
