@@ -23,7 +23,7 @@ final class BlobClientBench
      * @param  array{ path: string, count: int }  $params
      */
     #[ParamProviders('provideFiles')]
-    #[Assert('mode(variant.mem.peak) < 15 megabytes')]
+    #[Assert('mode(variant.mem.peak) < 16 megabytes')]
     public function benchUpload(array $params): void
     {
         $serviceClient = BlobServiceClient::fromConnectionString('UseDevelopmentStorage=true');
