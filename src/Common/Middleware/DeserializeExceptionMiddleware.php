@@ -6,6 +6,7 @@ namespace AzureOss\Storage\Common\Middleware;
 
 use AzureOss\Storage\Common\Exceptions\RequestExceptionDeserializer;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Promise\Promise;
 use Psr\Http\Message\RequestInterface;
 
 /**
@@ -18,15 +19,16 @@ final class DeserializeExceptionMiddleware
     public function __invoke(callable $handler): \Closure
     {
         return function (RequestInterface $request, array $options) use ($handler) {
-            /** @phpstan-ignore-next-line */
-            return $handler($request, $options)
-                ->otherwise(function (\Throwable $e) {
-                    if ($e instanceof RequestException) {
-                        throw $this->exceptionDeserializer->deserialize($e);
-                    }
+            /** @var Promise $promise */
+            $promise = $handler($request, $options);
 
-                    throw $e;
-                });
+            return $promise->otherwise(function (\Throwable $e) {
+                if ($e instanceof RequestException) {
+                    throw $this->exceptionDeserializer->deserialize($e);
+                }
+
+                throw $e;
+            });
         };
     }
 }
