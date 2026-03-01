@@ -44,6 +44,58 @@ jobs:
           chmod +x splitsh-lite
           sudo mv splitsh-lite /usr/local/bin/
 
+      - name: Sync package metadata
+        run: |
+          PACKAGE_DIR="${{ matrix.prefix }}"
+          MAIN_REPO="https://github.com/Azure-OSS/azure-storage-monorepo"
+
+          # Update .gitattributes
+          if [ -f "$PACKAGE_DIR/.gitattributes" ]; then
+            sed -i '/^\/\.git.*export-ignore$/d' "$PACKAGE_DIR/.gitattributes"
+          fi
+          echo "/.git* export-ignore" >> "$PACKAGE_DIR/.gitattributes"
+
+          # Create .github directory
+          mkdir -p "$PACKAGE_DIR/.github/workflows"
+
+          # Create PR template
+          cat > "$PACKAGE_DIR/.github/PULL_REQUEST_TEMPLATE.md" << 'EOF'
+          Please do not submit any Pull Requests here. They will be closed.
+          ---
+
+          Please submit your PR here instead:
+          $MAIN_REPO
+
+          This repository is what we call a "subtree split": a read-only subset of that main repository.
+          We're looking forward to your PR there!
+          EOF
+          sed -i "s|\$MAIN_REPO|$MAIN_REPO|g" "$PACKAGE_DIR/.github/PULL_REQUEST_TEMPLATE.md"
+
+          # Create auto-close PR workflow
+          cat > "$PACKAGE_DIR/.github/workflows/close-pull-request.yml" << 'EOF'
+          name: Close Pull Request
+
+          on:
+            pull_request_target:
+              types: [opened]
+
+          jobs:
+            run:
+              runs-on: ubuntu-latest
+              steps:
+              - uses: superbrothers/close-pull-request@v3
+                with:
+                  comment: |
+                    Thanks for your Pull Request! We love contributions.
+
+                    However, you should instead open your PR on the main repository:
+                    $MAIN_REPO
+
+                    This repository is what we call a "subtree split": a read-only subset of that main repository.
+                    We're looking forward to your PR there!
+          EOF
+          sed -i "s|\$MAIN_REPO|$MAIN_REPO|g" "$PACKAGE_DIR/.github/workflows/close-pull-request.yml"
+
       - name: Setup SSH and push
         env:
           SSH_KEY: ${{ secrets[matrix.secret] }}
