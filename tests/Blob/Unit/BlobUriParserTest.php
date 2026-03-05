@@ -98,5 +98,9 @@ final class BlobUriParserTest extends TestCase
         $uri = new Uri('https://testing.blob.core.windows.net/testing/file.txt');
 
         self::assertFalse(BlobUriParserHelper::isDevelopmentUri($uri));
+
+        $uri = new Uri('http://container-name:10000/');
+
+        self::assertFalse(BlobUriParserHelper::isDevelopmentUri($uri));
     }
 }
