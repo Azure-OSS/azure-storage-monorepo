@@ -20,22 +20,12 @@ class AzureStorageBlobAdapterTest extends TestCase
         return [AzureStorageBlobServiceProvider::class];
     }
 
-    protected function getEnvironmentSetUp($app): void
-    {
-        /** @phpstan-ignore-next-line */
-        $app['config']->set('filesystems.disks.azure', [
-            'driver' => 'azure-storage-blob',
-            'connection_string' => env('AZURE_STORAGE_CONNECTION_STRING'),
-            'container' => env('AZURE_STORAGE_CONTAINER'),
-        ]);
-    }
-
-    private static function createContainerClient(): BlobContainerClient
+    private static function createContainerClientFromConnectionString(): BlobContainerClient
     {
         $connectionString = getenv('AZURE_STORAGE_CONNECTION_STRING');
         $container = getenv('AZURE_STORAGE_CONTAINER');
 
-        if (! is_string($connectionString)) {
+        if (! is_string($connectionString) || $connectionString === '') {
             self::markTestSkipped('AZURE_STORAGE_CONNECTION_STRING is not provided.');
         }
 
@@ -43,95 +33,178 @@ class AzureStorageBlobAdapterTest extends TestCase
             self::markTestSkipped('AZURE_STORAGE_CONTAINER is not provided.');
         }
 
-        return BlobServiceClient::fromConnectionString($connectionString)->getContainerClient(
-            $container
-        );
+        return BlobServiceClient::fromConnectionString($connectionString)->getContainerClient($container);
     }
 
-    public static function setUpBeforeClass(): void
+    private static function createContainerClientFromToken(): BlobContainerClient
     {
-        self::createContainerClient()->deleteIfExists();
-        self::createContainerClient()->create();
+        $endpoint = getenv('AZURE_STORAGE_BLOB_ENDPOINT');
+        $accountName = getenv('AZURE_STORAGE_BLOB_ACCOUNT_NAME');
+        $tenantId = getenv('AZURE_STORAGE_BLOB_TENANT_ID');
+        $clientId = getenv('AZURE_STORAGE_BLOB_CLIENT_ID');
+        $clientSecret = getenv('AZURE_STORAGE_BLOB_CLIENT_SECRET');
+        $container = getenv('AZURE_STORAGE_CONTAINER');
+
+        $hasEndpoint = is_string($endpoint) && $endpoint !== '';
+        $hasAccountName = is_string($accountName) && $accountName !== '';
+
+        if (! $hasEndpoint && ! $hasAccountName) {
+            self::markTestSkipped('AZURE_STORAGE_BLOB_ENDPOINT or AZURE_STORAGE_BLOB_ACCOUNT_NAME is not provided.');
+        }
+
+        if (! is_string($tenantId) || ! is_string($clientId) || ! is_string($clientSecret) || ! is_string($container)) {
+            self::markTestSkipped('AZURE_STORAGE_BLOB_TENANT_ID, AZURE_STORAGE_BLOB_CLIENT_ID, AZURE_STORAGE_BLOB_CLIENT_SECRET, AZURE_STORAGE_CONTAINER must be provided.');
+        }
+
+        $uri = $hasEndpoint
+            ? new \GuzzleHttp\Psr7\Uri(rtrim($endpoint, '/').'/')
+            : new \GuzzleHttp\Psr7\Uri(sprintf('https://%s.blob.core.windows.net/', $accountName));
+
+        $credential = new \AzureOss\Storage\Common\Auth\ClientSecretCredential($tenantId, $clientId, $clientSecret);
+        $serviceClient = new BlobServiceClient($uri, $credential);
+
+        return $serviceClient->getContainerClient($container);
     }
 
     #[Test]
     public function it_resolves_from_manager(): void
     {
+        $connectionString = getenv('AZURE_STORAGE_CONNECTION_STRING');
+        $container = getenv('AZURE_STORAGE_CONTAINER');
+
+        if (! is_string($connectionString) || $connectionString === '' || ! is_string($container)) {
+            self::markTestSkipped('AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_CONTAINER are required.');
+        }
+
+        config(['filesystems.disks.azure' => [
+            'driver' => 'azure-storage-blob',
+            'connection_string' => $connectionString,
+            'container' => $container,
+        ]]);
+
         self::assertInstanceOf(AzureStorageBlobAdapter::class, Storage::disk('azure'));
     }
 
     #[Test]
-    public function driver_works(): void
+    public function driver_works_with_connection_string(): void
     {
+        $connectionString = getenv('AZURE_STORAGE_CONNECTION_STRING');
+        $container = getenv('AZURE_STORAGE_CONTAINER');
+
+        if (! is_string($connectionString) || $connectionString === '' || ! is_string($container)) {
+            self::markTestSkipped('AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_CONTAINER are required.');
+        }
+
+        config(['filesystems.disks.azure' => [
+            'driver' => 'azure-storage-blob',
+            'connection_string' => $connectionString,
+            'container' => $container,
+        ]]);
+
+        $containerClient = self::createContainerClientFromConnectionString();
+        $containerClient->deleteIfExists();
+        $containerClient->create();
+
         $driver = Storage::disk('azure');
 
-        // cleanup from previous test runs
         $driver->deleteDirectory('');
-
         self::assertFalse($driver->exists('file.text'));
 
         $driver->put('file.txt', 'content');
-
         self::assertTrue($driver->exists('file.txt'));
+        self::assertEquals('content', $driver->get('file.txt'));
 
-        self::assertEquals(
-            'content',
-            $driver->get('file.txt'),
-        );
         /** @phpstan-ignore-next-line */
         $temporaryUrl = $driver->temporaryUrl('file.txt', now()->addMinute());
         self::assertIsString($temporaryUrl);
-        self::assertEquals(
-            'content',
-            Http::get($temporaryUrl)->body(),
-        );
+        self::assertEquals('content', Http::get($temporaryUrl)->body());
 
         /** @phpstan-ignore-next-line */
         $url = $driver->url('file.txt');
         self::assertIsString($url);
-        self::assertEquals(
-            'content',
-            Http::get($url)->body(),
-        );
+        self::assertEquals('content', Http::get($url)->body());
 
         $driver->copy('file.txt', 'file2.txt');
-
         self::assertTrue($driver->exists('file2.txt'));
 
         $driver->move('file2.txt', 'file3.txt');
-
         self::assertFalse($driver->exists('file2.txt'));
         self::assertTrue($driver->exists('file3.txt'));
 
-        // Test temporary upload URL functionality
-        // Generate a temporary upload URL
         /** @phpstan-ignore-next-line */
         $uploadData = $driver->temporaryUploadUrl('temp-upload-test.txt', now()->addMinutes(5), [
             'content-type' => 'text/plain',
         ]);
-
         self::assertIsArray($uploadData);
         self::assertIsString($uploadData['url']);
         self::assertIsArray($uploadData['headers']);
 
-        // Upload content directly to the URL
         $content = 'This content was uploaded directly to a temporary URL';
         $response = Http::withHeaders($uploadData['headers'])
             ->withBody($content, 'text/plain')
             ->put($uploadData['url']);
-
-        // Verify the upload was successful
         self::assertTrue($response->successful());
 
-        // Verify the file exists and has the correct content
         self::assertTrue($driver->exists('temp-upload-test.txt'));
         self::assertEquals($content, $driver->get('temp-upload-test.txt'));
 
-        // Count files and clean up
-        self::assertCount(3, $driver->allFiles()); // file.txt, file3.txt, and temp-upload-test.txt
+        self::assertCount(3, $driver->allFiles());
+        $driver->deleteDirectory('');
+        self::assertCount(0, $driver->allFiles());
+    }
+
+    #[Test]
+    public function driver_works_with_token(): void
+    {
+        $endpoint = getenv('AZURE_STORAGE_BLOB_ENDPOINT');
+        $accountName = getenv('AZURE_STORAGE_BLOB_ACCOUNT_NAME');
+        $tenantId = getenv('AZURE_STORAGE_BLOB_TENANT_ID');
+        $clientId = getenv('AZURE_STORAGE_BLOB_CLIENT_ID');
+        $clientSecret = getenv('AZURE_STORAGE_BLOB_CLIENT_SECRET');
+        $container = getenv('AZURE_STORAGE_CONTAINER');
+
+        $hasEndpoint = is_string($endpoint) && $endpoint !== '';
+        $hasAccountName = is_string($accountName) && $accountName !== '';
+
+        if (! $hasEndpoint && ! $hasAccountName) {
+            self::markTestSkipped('AZURE_STORAGE_BLOB_ENDPOINT or AZURE_STORAGE_BLOB_ACCOUNT_NAME is required.');
+        }
+
+        if (! is_string($tenantId) || ! is_string($clientId) || ! is_string($clientSecret) || ! is_string($container)) {
+            self::markTestSkipped('AZURE_STORAGE_BLOB_TENANT_ID, AZURE_STORAGE_BLOB_CLIENT_ID, AZURE_STORAGE_BLOB_CLIENT_SECRET, AZURE_STORAGE_CONTAINER are required.');
+        }
+
+        $diskConfig = [
+            'driver' => 'azure-storage-blob',
+            'tenant_id' => $tenantId,
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'container' => $container,
+        ];
+        if ($hasEndpoint) {
+            $diskConfig['endpoint'] = $endpoint;
+        } else {
+            $diskConfig['account_name'] = $accountName;
+        }
+
+        config(['filesystems.disks.azure' => $diskConfig]);
+
+        $containerClient = self::createContainerClientFromToken();
+        $containerClient->createIfNotExists();
+
+        $driver = Storage::disk('azure');
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, $driver);
 
         $driver->deleteDirectory('');
+        self::assertFalse($driver->exists('token-test.txt'));
 
-        self::assertCount(0, $driver->allFiles());
+        $driver->put('token-test.txt', 'token auth content');
+        self::assertTrue($driver->exists('token-test.txt'));
+        self::assertEquals('token auth content', $driver->get('token-test.txt'));
+
+        self::assertFalse($driver->providesTemporaryUrls());
+
+        $driver->delete('token-test.txt');
+        self::assertFalse($driver->exists('token-test.txt'));
     }
 }
