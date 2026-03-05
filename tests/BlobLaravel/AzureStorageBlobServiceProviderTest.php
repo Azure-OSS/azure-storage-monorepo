@@ -236,6 +236,22 @@ class AzureStorageBlobServiceProviderTest extends TestCase
     }
 
     #[Test]
+    public function it_throws_when_is_public_container_has_wrong_type(): void
+    {
+        config(['filesystems.disks.azure' => [
+            'driver' => 'azure-storage-blob',
+            'connection_string' => 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=key;EndpointSuffix=core.windows.net',
+            'container' => 'test-container',
+            'is_public_container' => 'true',
+        ]]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The [is_public_container] must be a boolean');
+
+        Storage::disk('azure');
+    }
+
+    #[Test]
     public function null_prefix_is_ignored(): void
     {
         config(['filesystems.disks.azure' => [
@@ -243,6 +259,19 @@ class AzureStorageBlobServiceProviderTest extends TestCase
             'connection_string' => 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=key;EndpointSuffix=core.windows.net',
             'container' => 'test-container',
             'prefix' => null,
+        ]]);
+
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, Storage::disk('azure'));
+    }
+
+    #[Test]
+    public function null_is_public_container_is_ignored(): void
+    {
+        config(['filesystems.disks.azure' => [
+            'driver' => 'azure-storage-blob',
+            'connection_string' => 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=key;EndpointSuffix=core.windows.net',
+            'container' => 'test-container',
+            'is_public_container' => null,
         ]]);
 
         self::assertInstanceOf(AzureStorageBlobAdapter::class, Storage::disk('azure'));

@@ -39,6 +39,14 @@ $filesystem->write('path/to/file.txt', 'contents');
 $contents = $filesystem->read('path/to/file.txt');
 ```
 
+## Public Containers
+
+If your container is configured for public access, you can enable direct public URLs and more efficient server-to-server copies:
+
+```php
+$adapter = new AzureBlobStorageAdapter($containerClient, isPublicContainer: true);
+```
+
 ## Upload Options (HTTP Headers)
 
 You can set blob HTTP headers (including `Cache-Control`) by passing a `Config` instance when writing:

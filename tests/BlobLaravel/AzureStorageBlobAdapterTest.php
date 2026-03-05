@@ -86,6 +86,51 @@ class AzureStorageBlobAdapterTest extends TestCase
     }
 
     #[Test]
+    public function url_uses_sas_by_default_when_using_connection_string(): void
+    {
+        $connectionString = getenv('AZURE_STORAGE_CONNECTION_STRING');
+        $container = getenv('AZURE_STORAGE_CONTAINER');
+
+        if (! is_string($connectionString) || $connectionString === '' || ! is_string($container)) {
+            self::markTestSkipped('AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_CONTAINER are required.');
+        }
+
+        config(['filesystems.disks.azure' => [
+            'driver' => 'azure-storage-blob',
+            'connection_string' => $connectionString,
+            'container' => $container,
+        ]]);
+
+        /** @phpstan-ignore-next-line */
+        $url = Storage::disk('azure')->url('file.txt');
+        self::assertIsString($url);
+        self::assertStringContainsString('sig=', $url);
+    }
+
+    #[Test]
+    public function url_uses_direct_public_url_when_is_public_container_is_enabled(): void
+    {
+        $connectionString = getenv('AZURE_STORAGE_CONNECTION_STRING');
+        $container = getenv('AZURE_STORAGE_CONTAINER');
+
+        if (! is_string($connectionString) || $connectionString === '' || ! is_string($container)) {
+            self::markTestSkipped('AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_CONTAINER are required.');
+        }
+
+        config(['filesystems.disks.azure' => [
+            'driver' => 'azure-storage-blob',
+            'connection_string' => $connectionString,
+            'container' => $container,
+            'is_public_container' => true,
+        ]]);
+
+        /** @phpstan-ignore-next-line */
+        $url = Storage::disk('azure')->url('file.txt');
+        self::assertIsString($url);
+        self::assertStringNotContainsString('sig=', $url);
+    }
+
+    #[Test]
     public function driver_works_with_connection_string(): void
     {
         $connectionString = getenv('AZURE_STORAGE_CONNECTION_STRING');
