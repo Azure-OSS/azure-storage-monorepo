@@ -31,12 +31,30 @@ final class BlobClientTest extends BlobFeatureTestCase
 
     private BlobClient $blobClient;
 
+    private ?BlobContainerClient $secondaryContainerClient = null;
+
+    private ?BlobClient $secondaryBlobClient = null;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->containerClient = $this->serviceClient->getContainerClient('blobclient');
         $this->blobClient = $this->containerClient->getBlobClient('some/file.txt');
         $this->cleanContainer($this->containerClient->containerName);
+
+        if ($this->hasSecondaryStorageAccount()) {
+            $this->secondaryContainerClient = $this->secondaryServiceClient->getContainerClient('blobclient-secondary');
+            $this->secondaryBlobClient = $this->secondaryContainerClient->getBlobClient('some/file.txt');
+            $this->cleanContainer($this->secondaryContainerClient->containerName, $this->secondaryServiceClient);
+        }
+    }
+
+    /**
+     * @phpstan-assert !null $this->secondaryBlobClient
+     */
+    protected function requireSecondaryStorageAccount(): void
+    {
+        parent::requireSecondaryStorageAccount();
     }
 
     #[Test]
@@ -433,6 +451,101 @@ final class BlobClientTest extends BlobFeatureTestCase
         $this->expectException(NoPendingCopyOperationException::class);
 
         $this->blobClient->abortCopyFromUri($result->copyId);
+    }
+
+    #[Test]
+    public function wait_for_copy_completion_works_with_sync_copy(): void
+    {
+        $sourceContainerClient = $this->serviceClient->getContainerClient($this->randomContainerName());
+
+        $this->cleanContainer($sourceContainerClient->containerName);
+
+        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
+        $sourceBlobClient->upload('This should be copied!');
+        $sourceSas = $sourceBlobClient->generateSasUri(
+            BlobSasBuilder::new()
+                ->setPermissions(new BlobSasPermissions(read: true))
+                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
+        );
+
+        $this->blobClient->syncCopyFromUri($sourceSas);
+
+        $properties = $this->blobClient->waitForCopyCompletion();
+
+        self::assertEquals(CopyStatus::SUCCESS, $properties->copyStatus);
+    }
+
+    #[Test]
+    public function wait_for_copy_completion_works_with_async_copy(): void
+    {
+        $this->requireSecondaryStorageAccount();
+
+        $secondaryBlobClient = $this->secondaryBlobClient;
+
+        // Create a 10MB stream
+        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) use ($secondaryBlobClient) {
+            $secondaryBlobClient->upload($largeFile);
+        });
+
+        $sourceSas = $secondaryBlobClient->generateSasUri(
+            BlobSasBuilder::new()
+                ->setPermissions(new BlobSasPermissions(read: true))
+                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
+        );
+
+        $this->blobClient->startCopyFromUri($sourceSas);
+
+        $properties = $this->blobClient->waitForCopyCompletion(pollingIntervalMs: 100);
+
+        self::assertEquals(CopyStatus::SUCCESS, $properties->copyStatus);
+
+        $sourceContent = $secondaryBlobClient->downloadStreaming()->content->getContents();
+        $targetContent = $this->blobClient->downloadStreaming()->content->getContents();
+
+        self::assertEquals($sourceContent, $targetContent);
+    }
+
+    #[Test]
+    public function wait_for_copy_completion_throws_timeout(): void
+    {
+        $this->markTestSkippedWhenUsingSimulator();
+        $this->requireSecondaryStorageAccount();
+
+        $secondaryBlobClient = $this->secondaryBlobClient;
+
+        // Create a 10MB stream to increase the chance of pending state
+        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) use ($secondaryBlobClient) {
+            $secondaryBlobClient->upload($largeFile);
+        });
+
+        $sourceSas = $secondaryBlobClient->generateSasUri(
+            BlobSasBuilder::new()
+                ->setPermissions(new BlobSasPermissions(read: true))
+                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
+        );
+
+        $this->blobClient->startCopyFromUri($sourceSas);
+
+        // Check if copy is still pending, if not skip test as copy was too fast
+        $properties = $this->blobClient->getProperties();
+        if ($properties->copyStatus !== CopyStatus::PENDING) {
+            self::markTestSkipped('Copy operation completed too quickly to test timeout');
+        }
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Timeout waiting for blob copy to complete');
+
+        $this->blobClient->waitForCopyCompletion(pollingIntervalMs: 100, timeoutMs: 1);
+    }
+
+    #[Test]
+    public function wait_for_copy_completion_returns_immediately_when_no_copy_operation(): void
+    {
+        $this->blobClient->upload('test content');
+
+        $properties = $this->blobClient->waitForCopyCompletion();
+
+        self::assertNull($properties->copyStatus);
     }
 
     #[Test]

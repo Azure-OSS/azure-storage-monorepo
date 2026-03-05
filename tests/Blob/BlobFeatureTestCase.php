@@ -12,6 +12,8 @@ abstract class BlobFeatureTestCase extends TestCase
 {
     protected BlobServiceClient $serviceClient;
 
+    protected ?BlobServiceClient $secondaryServiceClient = null;
+
     protected function setUp(): void
     {
         $connectionString = getenv('AZURE_STORAGE_CONNECTION_STRING');
@@ -21,6 +23,29 @@ abstract class BlobFeatureTestCase extends TestCase
         }
 
         $this->serviceClient = BlobServiceClient::fromConnectionString($connectionString);
+
+        $secondaryConnectionString = getenv('AZURE_STORAGE_CONNECTION_STRING_SECONDARY');
+        if (is_string($secondaryConnectionString) && $secondaryConnectionString !== '') {
+            $this->secondaryServiceClient = BlobServiceClient::fromConnectionString($secondaryConnectionString);
+        }
+    }
+
+    /**
+     * @phpstan-assert-if-true !null $this->secondaryServiceClient
+     */
+    protected function hasSecondaryStorageAccount(): bool
+    {
+        return $this->secondaryServiceClient !== null;
+    }
+
+    /**
+     * @phpstan-assert !null $this->secondaryServiceClient
+     */
+    protected function requireSecondaryStorageAccount(): void
+    {
+        if (! $this->hasSecondaryStorageAccount()) {
+            self::markTestSkipped('Secondary storage account required. Please set AZURE_STORAGE_CONNECTION_STRING_SECONDARY environment variable.');
+        }
     }
 
     protected function randomContainerName(): string
@@ -28,9 +53,10 @@ abstract class BlobFeatureTestCase extends TestCase
         return substr(md5((string) mt_rand()), 0, 7);
     }
 
-    protected function cleanContainer(string $containerName): void
+    protected function cleanContainer(string $containerName, ?BlobServiceClient $serviceClient = null): void
     {
-        $containerClient = $this->serviceClient->getContainerClient($containerName);
+        $client = $serviceClient ?? $this->serviceClient;
+        $containerClient = $client->getContainerClient($containerName);
 
         $containerClient->createIfNotExists();
 

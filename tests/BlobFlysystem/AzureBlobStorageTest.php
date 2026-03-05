@@ -222,7 +222,7 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
         $adapter = new AzureBlobStorageAdapter(
             self::createContainerClient(),
             'flysystem',
-            useDirectPublicUrl: true,
+            isPublicContainer: true,
         );
 
         $url = $adapter->publicUrl('test-file.txt', new Config);
