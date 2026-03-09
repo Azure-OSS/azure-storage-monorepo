@@ -21,6 +21,7 @@ use AzureOss\Storage\Tests\Blob\CreatesTempFiles;
 use GuzzleHttp\Psr7\NoSeekStream;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
 use GuzzleHttp\Psr7\Uri;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\StreamInterface;
@@ -315,6 +316,37 @@ final class BlobClientTest extends TestCase
         $this->expectException(ContainerNotFoundException::class);
 
         $this->service()->getContainerClient('noop')->getBlobClient('noop')->upload('test');
+    }
+
+    #[Test]
+    #[DataProvider('benchFiles')]
+    public function upload_uses_low_memory(int $fileSize, int $count): void
+    {
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('benchmark');
+
+        $startMemory = memory_get_peak_usage(true);
+
+        for ($i = 0; $i < $count; $i++) {
+            $file = $this->tempFile($fileSize);
+            $blob->upload($file);
+        }
+
+        $endMemory = memory_get_peak_usage(true);
+
+        $memoryUsed = ($endMemory - $startMemory) / 1024 / 1024; // MB
+
+        // Assert memory usage is reasonable (< 16MB)
+        self::assertLessThan(16, $memoryUsed, 'Memory usage should be less than 16MB');
+    }
+
+    public static function benchFiles(): \Generator
+    {
+        yield '100x10KB' => [10_000, 100];
+        yield '10x10MB' => [10_000_000, 10];
+        yield '5x100MB' => [100_000_000, 5];
+        yield '2x1GB' => [1_000_000_000, 2];
+        yield '1x4GB' => [4_000_000_000, 1];
     }
 
     #[Test]
