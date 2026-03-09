@@ -13,7 +13,6 @@ use AzureOss\Storage\Common\Sas\AccountSasBuilder;
 use AzureOss\Storage\Common\Sas\AccountSasPermissions;
 use AzureOss\Storage\Common\Sas\AccountSasResourceTypes;
 use AzureOss\Storage\Common\Sas\SasIpRange;
-use AzureOss\Storage\Tests\Blob\BlobFeatureTestCase;
 use AzureOss\Storage\Tests\Blob\CreatesTempContainers;
 use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\Attributes\Test;
@@ -139,7 +138,7 @@ final class BlobServiceClientTest extends TestCase
     #[Test]
     public function get_containers_works_with_prefix(): void
     {
-       $this->tempContainer('test-prefixed-');
+        $this->tempContainer('test-prefixed-');
 
         $after = iterator_to_array($this->service()->getBlobContainers('test-prefixed-'));
 

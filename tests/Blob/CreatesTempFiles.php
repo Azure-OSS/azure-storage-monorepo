@@ -51,7 +51,7 @@ trait CreatesTempFiles
     }
 
     #[After]
-    protected function cleanupTempFiles(): void
+    protected function tearDownFiles(): void
     {
         foreach ($this->tempFiles as $path) {
             try {

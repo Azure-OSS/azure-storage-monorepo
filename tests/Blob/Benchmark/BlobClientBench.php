@@ -4,47 +4,44 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Tests\Blob\Benchmark;
 
-use AzureOss\Storage\Blob\BlobServiceClient;
-use AzureOss\Storage\Tests\Utils\FileFactory;
-use GuzzleHttp\Psr7\Utils;
-use PhpBench\Attributes\AfterClassMethods;
-use PhpBench\Attributes\Assert;
-use PhpBench\Attributes\ParamProviders;
+use AzureOss\Storage\Tests\Blob\CreatesTempContainers;
+use AzureOss\Storage\Tests\Blob\CreatesTempFiles;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
 
-#[AfterClassMethods('cleanTestFiles')]
-final class BlobClientBench
+final class BlobClientBench extends TestCase
 {
-    public static function cleanTestFiles(): void
+    use CreatesTempContainers, CreatesTempFiles;
+
+    #[Test]
+    #[DataProvider('provideFiles')]
+    public function upload_uses_low_memory(int $fileSize, int $count): void
     {
-        FileFactory::clean();
-    }
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('benchmark');
 
-    /**
-     * @param  array{ path: string, count: int }  $params
-     */
-    #[ParamProviders('provideFiles')]
-    #[Assert('mode(variant.mem.peak) < 16 megabytes')]
-    public function benchUpload(array $params): void
-    {
-        $serviceClient = BlobServiceClient::fromConnectionString('UseDevelopmentStorage=true');
-        $containerClient = $serviceClient->getContainerClient('benchmark');
-        $containerClient->createIfNotExists();
+        $startMemory = memory_get_peak_usage(true);
 
-        $blobClient = $containerClient->getBlobClient('benchmark');
-
-        for ($i = 0; $i < $params['count']; $i++) {
-            $file = Utils::tryFopen($params['path'], 'r');
-
-            $blobClient->upload($file);
+        for ($i = 0; $i < $count; $i++) {
+            $file = $this->tempFile($fileSize);
+            $blob->upload($file);
         }
+
+        $endMemory = memory_get_peak_usage(true);
+
+        $memoryUsed = ($endMemory - $startMemory) / 1024 / 1024; // MB
+
+        // Assert memory usage is reasonable (< 16MB)
+        self::assertLessThan(16, $memoryUsed, 'Memory usage should be less than 16MB');
     }
 
-    public function provideFiles(): \Generator
+    public static function provideFiles(): \Generator
     {
-        yield '20x10KB' => ['path' => FileFactory::create(10_000), 'count' => 100];
-        yield '10x10MB' => ['path' => FileFactory::create(10_000_000), 'count' => 10];
-        yield '5x100MB' => ['path' => FileFactory::create(100_000_000), 'count' => 5];
-        yield '2x1GB' => ['path' => FileFactory::create(1_000_000_000), 'count' => 2];
-        yield '1x4GB' => ['path' => FileFactory::create(4_000_000_000), 'count' => 1];
+        yield '100x10KB' => [10_000, 100];
+        yield '10x10MB' => [10_000_000, 10];
+        yield '5x100MB' => [100_000_000, 5];
+        yield '2x1GB' => [1_000_000_000, 2];
+        yield '1x4GB' => [4_000_000_000, 1];
     }
 }

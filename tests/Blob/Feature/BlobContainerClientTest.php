@@ -60,7 +60,7 @@ final class BlobContainerClientTest extends TestCase
     #[Test]
     public function create_works(): void
     {
-        $containerName = 'test-' . uniqid();
+        $containerName = 'test-'.uniqid();
         $container = $this->service()->getContainerClient($containerName);
 
         self::assertFalse($container->exists());
@@ -84,7 +84,7 @@ final class BlobContainerClientTest extends TestCase
     #[Test]
     public function create_works_for_public_access_type_blob(): void
     {
-        $containerName = 'test-' . uniqid();
+        $containerName = 'test-'.uniqid();
         $container = $this->service()->getContainerClient($containerName);
 
         self::assertFalse($container->exists());
@@ -106,7 +106,7 @@ final class BlobContainerClientTest extends TestCase
     #[Test]
     public function create_works_for_public_access_type_container(): void
     {
-        $containerName = 'test-' . uniqid();
+        $containerName = 'test-'.uniqid();
         $container = $this->service()->getContainerClient($containerName);
 
         self::assertFalse($container->exists());
@@ -125,7 +125,7 @@ final class BlobContainerClientTest extends TestCase
     #[Test]
     public function create_if_not_exists_works(): void
     {
-        $containerName = 'test-' . uniqid();
+        $containerName = 'test-'.uniqid();
         $container = $this->service()->getContainerClient($containerName);
 
         self::assertFalse($container->exists());
@@ -189,7 +189,7 @@ final class BlobContainerClientTest extends TestCase
     #[Test]
     public function exists_works(): void
     {
-        $containerName = 'test-' . uniqid();
+        $containerName = 'test-'.uniqid();
         $container = $this->service()->getContainerClient($containerName);
 
         self::assertFalse($container->exists());
