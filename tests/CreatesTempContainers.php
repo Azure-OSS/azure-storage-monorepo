@@ -65,10 +65,7 @@ trait CreatesTempContainers
             'public' => 'AZURE_STORAGE_CONNECTION_STRING_PUBLIC',
             'soft-deletes' => 'AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES',
             'versions' => 'AZURE_STORAGE_CONNECTION_STRING_VERSIONS',
-            'public+soft-deletes' => 'AZURE_STORAGE_CONNECTION_STRING_PUBLIC_SOFT_DELETES',
-            'public+versions' => 'AZURE_STORAGE_CONNECTION_STRING_PUBLIC_VERSIONS',
             'soft-deletes+versions' => 'AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES_VERSIONS',
-            'public+soft-deletes+versions' => 'AZURE_STORAGE_CONNECTION_STRING_ALL',
         ];
     }
 
