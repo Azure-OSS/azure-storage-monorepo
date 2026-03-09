@@ -4,11 +4,11 @@ on:
     branches:
       - "main"
 
-name: Tests
+name: Azurite Tests
 
 jobs:
-  phpunit:
-    name: PHPUnit on ${{ matrix.operating-system }} with PHP ${{ matrix.php-version }}
+  azurite-tests:
+    name: Azurite Tests - PHP ${{ matrix.php-version }}
 
     strategy:
       matrix:

@@ -1,0 +1,75 @@
+on:
+  workflow_dispatch:
+
+name: Azure Infrastructure Tests
+
+jobs:
+  azure-tests:
+    name: Azure Tests - PHP ${{ matrix.php-version }}
+
+    environment: azure-testing
+
+    strategy:
+      matrix:
+        operating-system:
+          - "ubuntu-latest"
+        php-version:
+          - "8.1"
+          - "8.2"
+          - "8.3"
+          - "8.4"
+
+    runs-on: ${{ matrix.operating-system }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup node for the mock server
+        uses: actions/setup-node@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Azure Infrastructure
+        id: deploy
+        run: |
+          RG_NAME="rg-storage-test-php${{ matrix.php-version }}-${{ github.run_id }}"
+          echo "resource_group=${RG_NAME}" >> $GITHUB_OUTPUT
+
+          az deployment sub create \
+            --name "deploy-${{ github.run_id }}-php${{ matrix.php-version }}" \
+            --location eastus \
+            --template-file infra/main.bicep \
+            --parameters resourceGroupName="${RG_NAME}" \
+            --output json > deployment-output.json
+
+          # Extract connection strings from outputs
+          echo "AZURE_STORAGE_CONNECTION_STRING=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING.value' deployment-output.json)" >> $GITHUB_ENV
+          echo "AZURE_STORAGE_CONNECTION_STRING_PUBLIC=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING_PUBLIC.value' deployment-output.json)" >> $GITHUB_ENV
+          echo "AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES.value' deployment-output.json)" >> $GITHUB_ENV
+          echo "AZURE_STORAGE_CONNECTION_STRING_VERSIONS=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING_VERSIONS.value' deployment-output.json)" >> $GITHUB_ENV
+          echo "AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES_VERSIONS=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES_VERSIONS.value' deployment-output.json)" >> $GITHUB_ENV
+
+      - name: Install PHP with extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: curl json
+          coverage: none
+
+      - name: Download dependencies
+        run: composer install --no-interaction --no-progress --optimize-autoloader
+
+      - name: Run tests
+        run: ./vendor/bin/phpunit
+
+      - name: Destroy Azure Infrastructure
+        if: always()
+        run: |
+          az group delete \
+            --name "${{ steps.deploy.outputs.resource_group }}" \
+            --yes \
+            --no-wait
