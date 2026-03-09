@@ -28,12 +28,13 @@ trait CreatesTempContainers
     }
 
     protected function tempContainer(
+        string $prefix = 'test-',
         bool $versions = false,
         bool $public = false,
         bool $softDeletes = false,
     ): BlobContainerClient {
         $serviceClient = $this->service($versions, $public, $softDeletes);
-        $containerClient = $serviceClient->getContainerClient('test-'.bin2hex(random_bytes(12)));
+        $containerClient = $serviceClient->getContainerClient($prefix.bin2hex(random_bytes(12)));
         $containerClient->create();
 
         $this->tempContainers[] = $containerClient;

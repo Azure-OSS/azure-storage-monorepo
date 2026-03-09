@@ -14,45 +14,49 @@ use AzureOss\Storage\Common\Sas\AccountSasPermissions;
 use AzureOss\Storage\Common\Sas\AccountSasResourceTypes;
 use AzureOss\Storage\Common\Sas\SasIpRange;
 use AzureOss\Storage\Tests\Blob\BlobFeatureTestCase;
+use AzureOss\Storage\Tests\Blob\CreatesTempContainers;
 use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
 
-final class BlobServiceClientTest extends BlobFeatureTestCase
+final class BlobServiceClientTest extends TestCase
 {
+    use CreatesTempContainers;
+
     #[Test]
     public function from_connection_string_with_blob_endpoint_works(): void
     {
         $connectionString = 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;';
-        $client = BlobServiceClient::fromConnectionString($connectionString);
+        $service = BlobServiceClient::fromConnectionString($connectionString);
 
-        self::assertInstanceOf(StorageSharedKeyCredential::class, $client->credential);
-        self::assertEquals('devstoreaccount1', $client->credential->accountName);
-        self::assertEquals('Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==', $client->credential->accountKey);
-        self::assertEquals('http://127.0.0.1:10000/devstoreaccount1/', (string) $client->uri);
+        self::assertInstanceOf(StorageSharedKeyCredential::class, $service->credential);
+        self::assertEquals('devstoreaccount1', $service->credential->accountName);
+        self::assertEquals('Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==', $service->credential->accountKey);
+        self::assertEquals('http://127.0.0.1:10000/devstoreaccount1/', (string) $service->uri);
     }
 
     #[Test]
     public function from_connection_string_with_endpoint_suffix_works(): void
     {
         $connectionString = 'DefaultEndpointsProtocol=https;AccountName=testing;AccountKey=Y2hlZXNlMWNoZWVzZTEyY2hlZXNlMTIzCg==;EndpointSuffix=core.windows.net';
-        $client = BlobServiceClient::fromConnectionString($connectionString);
+        $service = BlobServiceClient::fromConnectionString($connectionString);
 
-        self::assertInstanceOf(StorageSharedKeyCredential::class, $client->credential);
-        self::assertEquals('testing', $client->credential->accountName);
-        self::assertEquals('Y2hlZXNlMWNoZWVzZTEyY2hlZXNlMTIzCg==', $client->credential->accountKey);
-        self::assertEquals('https://testing.blob.core.windows.net/', (string) $client->uri);
+        self::assertInstanceOf(StorageSharedKeyCredential::class, $service->credential);
+        self::assertEquals('testing', $service->credential->accountName);
+        self::assertEquals('Y2hlZXNlMWNoZWVzZTEyY2hlZXNlMTIzCg==', $service->credential->accountKey);
+        self::assertEquals('https://testing.blob.core.windows.net/', (string) $service->uri);
     }
 
     #[Test]
     public function from_connection_string_with_developer_shortcut_works(): void
     {
         $connectionString = 'UseDevelopmentStorage=true';
-        $client = BlobServiceClient::fromConnectionString($connectionString);
+        $service = BlobServiceClient::fromConnectionString($connectionString);
 
-        self::assertInstanceOf(StorageSharedKeyCredential::class, $client->credential);
-        self::assertEquals('devstoreaccount1', $client->credential->accountName);
-        self::assertEquals('Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==', $client->credential->accountKey);
-        self::assertEquals('http://127.0.0.1:10000/devstoreaccount1/', (string) $client->uri);
+        self::assertInstanceOf(StorageSharedKeyCredential::class, $service->credential);
+        self::assertEquals('devstoreaccount1', $service->credential->accountName);
+        self::assertEquals('Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==', $service->credential->accountKey);
+        self::assertEquals('http://127.0.0.1:10000/devstoreaccount1/', (string) $service->uri);
     }
 
     #[Test]
@@ -83,10 +87,10 @@ final class BlobServiceClientTest extends BlobFeatureTestCase
     public function from_connection_string_with_sas_works(): void
     {
         $connectionString = 'BlobEndpoint=https://storagesample.blob.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=iCvQmdZngZNW%2F4vw43j6%2BVz6fndHF5LI639QJba4r8o%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&se=2016-04-13T03%3A29%3A31Z&srt=s&ss=bf&sp=rwl';
-        $client = BlobServiceClient::fromConnectionString($connectionString);
+        $service = BlobServiceClient::fromConnectionString($connectionString);
 
-        self::assertNull($client->credential);
-        self::assertEquals('https://storagesample.blob.core.windows.net/?sv=2015-07-08&sig=iCvQmdZngZNW%2F4vw43j6%2BVz6fndHF5LI639QJba4r8o%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&se=2016-04-13T03%3A29%3A31Z&srt=s&ss=bf&sp=rwl', (string) $client->uri);
+        self::assertNull($service->credential);
+        self::assertEquals('https://storagesample.blob.core.windows.net/?sv=2015-07-08&sig=iCvQmdZngZNW%2F4vw43j6%2BVz6fndHF5LI639QJba4r8o%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&se=2016-04-13T03%3A29%3A31Z&srt=s&ss=bf&sp=rwl', (string) $service->uri);
     }
 
     #[Test]
@@ -101,9 +105,9 @@ final class BlobServiceClientTest extends BlobFeatureTestCase
     public function from_connection_string_default_endpoint_protocol_overwrites_protocol_of_blob_endpoint(): void
     {
         $connectionString = 'DefaultEndpointsProtocol=https;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;';
-        $client = BlobServiceClient::fromConnectionString($connectionString);
+        $service = BlobServiceClient::fromConnectionString($connectionString);
 
-        self::assertEquals('https://127.0.0.1:10000/devstoreaccount1/', (string) $client->uri);
+        self::assertEquals('https://127.0.0.1:10000/devstoreaccount1/', (string) $service->uri);
     }
 
     #[Test]
@@ -111,22 +115,23 @@ final class BlobServiceClientTest extends BlobFeatureTestCase
     {
         $connectionString = 'UseDevelopmentStorage=true';
 
-        $client = BlobServiceClient::fromConnectionString($connectionString);
+        $service = BlobServiceClient::fromConnectionString($connectionString);
 
-        $containerClient = $client->getContainerClient('testing');
+        $container = $service->getContainerClient('testing');
 
-        self::assertEquals($client->credential, $containerClient->credential);
-        self::assertEquals('http://127.0.0.1:10000/devstoreaccount1/testing', (string) $containerClient->uri);
+        self::assertEquals($service->credential, $container->credential);
+        self::assertEquals('http://127.0.0.1:10000/devstoreaccount1/testing', (string) $container->uri);
     }
 
     #[Test]
     public function get_containers_works(): void
     {
-        $before = iterator_to_array($this->serviceClient->getBlobContainers());
+        $service = $this->service();
+        $before = iterator_to_array($service->getBlobContainers());
 
-        $this->serviceClient->getContainerClient($this->randomContainerName())->create();
+        $this->tempContainer();
 
-        $after = iterator_to_array($this->serviceClient->getBlobContainers());
+        $after = iterator_to_array($service->getBlobContainers());
 
         self::assertCount(count($before) + 1, $after);
     }
@@ -134,10 +139,9 @@ final class BlobServiceClientTest extends BlobFeatureTestCase
     #[Test]
     public function get_containers_works_with_prefix(): void
     {
-        $name = $this->randomContainerName();
-        $this->serviceClient->getContainerClient($name)->create();
+       $this->tempContainer('test-prefixed-');
 
-        $after = iterator_to_array($this->serviceClient->getBlobContainers($name));
+        $after = iterator_to_array($this->service()->getBlobContainers('test-prefixed-'));
 
         self::assertCount(1, $after);
     }
@@ -145,18 +149,20 @@ final class BlobServiceClientTest extends BlobFeatureTestCase
     #[Test]
     public function find_blobs_by_tag_works(): void
     {
-        $containerClient = $this->serviceClient->getContainerClient('tagging');
-        $containerClient->createIfNotExists();
+        $service = $this->service();
+        $container = $service->getContainerClient('test-'.bin2hex(random_bytes(12)));
+        $container->create();
+        $this->tempContainers[] = $container;
 
-        $blobClient = $containerClient->getBlobClient('tagged');
-        $blobClient->deleteIfExists();
-        $blobClient->upload('');
-        $blobClient->setTags(['foo' => 'blobservice']);
+        $uniqueTag = 'blobservice-'.bin2hex(random_bytes(8));
+        $blob = $container->getBlobClient('tagged');
+        $blob->upload('');
+        $blob->setTags(['foo' => $uniqueTag]);
 
         sleep(1); // tagging doesn't seem to be instant
 
-        self::assertCount(0, iterator_to_array($this->serviceClient->findBlobsByTag("foo = 'noop'")));
-        self::assertCount(1, iterator_to_array($this->serviceClient->findBlobsByTag("foo = 'blobservice'")));
+        self::assertCount(0, iterator_to_array($service->findBlobsByTag("foo = 'noop'")));
+        self::assertCount(1, iterator_to_array($service->findBlobsByTag("foo = '{$uniqueTag}'")));
     }
 
     #[Test]
@@ -179,7 +185,7 @@ final class BlobServiceClientTest extends BlobFeatureTestCase
     {
         $this->expectNotToPerformAssertions();
 
-        $sas = $this->serviceClient->generateAccountSasUri(
+        $sas = $this->service()->generateAccountSasUri(
             AccountSasBuilder::new()
                 ->setPermissions(new AccountSasPermissions(list: true))
                 ->setResourceTypes(new AccountSasResourceTypes(service: true))
