@@ -53,7 +53,7 @@ var storageConfigs = [
 // --------------------------------------------------------------------------
 resource storageAccounts 'Microsoft.Storage/storageAccounts@2023-01-01' = [
   for config in storageConfigs: {
-    name: toLower('st${config.namePart}${nameSuffix}')
+    name: toLower('azureoss${config.namePart}${nameSuffix}')
     location: location
     kind: 'StorageV2'
     sku: {
@@ -99,12 +99,12 @@ resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01
 // --------------------------------------------------------------------------
 var suffix = environment().suffixes.storage
 
-output AZURE_STORAGE_CONNECTION_STRING string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[0].name};AccountKey=${storageAccounts[0].listKeys().keys[0].value};EndpointSuffix=${suffix}'
+output connection_string string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[0].name};AccountKey=${storageAccounts[0].listKeys().keys[0].value};EndpointSuffix=${suffix}'
 
-output AZURE_STORAGE_CONNECTION_STRING_PUBLIC string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[1].name};AccountKey=${storageAccounts[1].listKeys().keys[0].value};EndpointSuffix=${suffix}'
+output connection_string_public string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[1].name};AccountKey=${storageAccounts[1].listKeys().keys[0].value};EndpointSuffix=${suffix}'
 
-output AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[2].name};AccountKey=${storageAccounts[2].listKeys().keys[0].value};EndpointSuffix=${suffix}'
+output connection_string_soft_deletes string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[2].name};AccountKey=${storageAccounts[2].listKeys().keys[0].value};EndpointSuffix=${suffix}'
 
-output AZURE_STORAGE_CONNECTION_STRING_VERSIONS string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[3].name};AccountKey=${storageAccounts[3].listKeys().keys[0].value};EndpointSuffix=${suffix}'
+output connection_string_versions string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[3].name};AccountKey=${storageAccounts[3].listKeys().keys[0].value};EndpointSuffix=${suffix}'
 
-output AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES_VERSIONS string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[4].name};AccountKey=${storageAccounts[4].listKeys().keys[0].value};EndpointSuffix=${suffix}'
+output connection_string_soft_deletes_versions string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccounts[4].name};AccountKey=${storageAccounts[4].listKeys().keys[0].value};EndpointSuffix=${suffix}'

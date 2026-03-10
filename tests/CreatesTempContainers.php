@@ -6,6 +6,8 @@ namespace AzureOss\Storage\Tests;
 
 use AzureOss\Storage\Blob\BlobContainerClient;
 use AzureOss\Storage\Blob\BlobServiceClient;
+use AzureOss\Storage\Blob\Models\CreateContainerOptions;
+use AzureOss\Storage\Blob\Models\PublicAccessType;
 use PHPUnit\Framework\Attributes\After;
 use PHPUnit\Framework\TestCase;
 
@@ -35,7 +37,12 @@ trait CreatesTempContainers
     ): BlobContainerClient {
         $serviceClient = $this->service($versions, $public, $softDeletes);
         $containerClient = $serviceClient->getContainerClient($prefix.bin2hex(random_bytes(12)));
-        $containerClient->create();
+
+        $options = $public
+            ? new CreateContainerOptions(PublicAccessType::BLOB)
+            : null;
+
+        $containerClient->create($options);
 
         $this->tempContainers[] = $containerClient;
 

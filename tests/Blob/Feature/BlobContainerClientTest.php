@@ -85,7 +85,7 @@ final class BlobContainerClientTest extends TestCase
     public function create_works_for_public_access_type_blob(): void
     {
         $containerName = 'test-'.uniqid();
-        $container = $this->service()->getContainerClient($containerName);
+        $container = $this->service(public: true)->getContainerClient($containerName);
 
         self::assertFalse($container->exists());
 
@@ -107,7 +107,7 @@ final class BlobContainerClientTest extends TestCase
     public function create_works_for_public_access_type_container(): void
     {
         $containerName = 'test-'.uniqid();
-        $container = $this->service()->getContainerClient($containerName);
+        $container = $this->service(public: true)->getContainerClient($containerName);
 
         self::assertFalse($container->exists());
 

@@ -14,10 +14,11 @@ jobs:
         operating-system:
           - "ubuntu-latest"
         php-version:
-          - "8.1"
-          - "8.2"
-          - "8.3"
-          - "8.4"
+#          - "8.1"
+#          - "8.2"
+#          - "8.3"
+#          - "8.4"
+          - "8.5"
 
     runs-on: ${{ matrix.operating-system }}
 
@@ -31,7 +32,9 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy Azure Infrastructure
         id: deploy
@@ -47,11 +50,11 @@ jobs:
             --output json > deployment-output.json
 
           # Extract connection strings from outputs
-          echo "AZURE_STORAGE_CONNECTION_STRING=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING.value' deployment-output.json)" >> $GITHUB_ENV
-          echo "AZURE_STORAGE_CONNECTION_STRING_PUBLIC=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING_PUBLIC.value' deployment-output.json)" >> $GITHUB_ENV
-          echo "AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES.value' deployment-output.json)" >> $GITHUB_ENV
-          echo "AZURE_STORAGE_CONNECTION_STRING_VERSIONS=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING_VERSIONS.value' deployment-output.json)" >> $GITHUB_ENV
-          echo "AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES_VERSIONS=$(jq -r '.properties.outputs.AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES_VERSIONS.value' deployment-output.json)" >> $GITHUB_ENV
+          echo "AZURE_STORAGE_CONNECTION_STRING=$(jq -r '.properties.outputs.connection_string.value' deployment-output.json)" >> $GITHUB_ENV
+          echo "AZURE_STORAGE_CONNECTION_STRING_PUBLIC=$(jq -r '.properties.outputs.connection_string_public.value' deployment-output.json)" >> $GITHUB_ENV
+          echo "AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES=$(jq -r '.properties.outputs.connection_string_soft_deletes.value' deployment-output.json)" >> $GITHUB_ENV
+          echo "AZURE_STORAGE_CONNECTION_STRING_VERSIONS=$(jq -r '.properties.outputs.connection_string_versions.value' deployment-output.json)" >> $GITHUB_ENV
+          echo "AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES_VERSIONS=$(jq -r '.properties.outputs.connection_string_soft_deletes_versions.value' deployment-output.json)" >> $GITHUB_ENV
 
       - name: Install PHP with extensions
         uses: shivammathur/setup-php@v2

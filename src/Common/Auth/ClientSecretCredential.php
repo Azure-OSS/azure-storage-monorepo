@@ -23,7 +23,7 @@ final class ClientSecretCredential implements TokenCredential
     {
         $client = new Client;
 
-        $response = $client->post("https://login.microsoftonline.com/{$this->tenantId}/oauth2/token", [
+        $response = $client->post("https://login.microsoftonline.com/{$this->tenantId}/oauth2/v2.0/token", [
             RequestOptions::HEADERS => [
                 'Content-Type' => 'application/x-www-form-urlencoded',
             ],
@@ -31,7 +31,7 @@ final class ClientSecretCredential implements TokenCredential
                 'grant_type' => 'client_credentials',
                 'client_id' => $this->clientId,
                 'client_secret' => $this->clientSecret,
-                'resource' => 'https://storage.azure.com/',
+                'scope' => 'https://storage.azure.com/.default',
             ],
         ]);
 

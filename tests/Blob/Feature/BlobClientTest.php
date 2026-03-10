@@ -792,8 +792,8 @@ final class BlobClientTest extends TestCase
 
         // Change content type using setHttpHeaders
         $blob->setHttpHeaders(new BlobHttpHeaders(
-            contentType: 'text/plain',
             cacheControl: 'public, max-age=3600',
+            contentType: 'text/plain',
         ));
 
         $updatedProps = $blob->getProperties();
@@ -804,7 +804,7 @@ final class BlobClientTest extends TestCase
     #[Test]
     public function set_http_headers_after_copy_works(): void
     {
-        $container = $this->tempContainer();
+        $container = $this->tempContainer(public: true);
 
         // Create source blob
         $sourceBlobClient = $container->getBlobClient('source.txt');

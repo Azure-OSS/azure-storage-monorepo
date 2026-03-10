@@ -1,8 +1,7 @@
-// main.bicep
 targetScope = 'subscription'
 
 @description('Name of the resource group to create')
-param resourceGroupName string = 'rg-storage-test'
+param resourceGroupName string = 'rg-azure-oss-storage-test'
 
 @description('Azure region for all resources')
 param location string = 'eastus'
@@ -19,7 +18,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
 // Deploy storage accounts into the new resource group via module
 // --------------------------------------------------------------------------
 module storageModule 'storage.bicep' = {
-  name: 'storageDeployment'
+  name: 'azureOssStorageDeployment'
   scope: rg
   params: {
     location: location
@@ -29,8 +28,8 @@ module storageModule 'storage.bicep' = {
 // --------------------------------------------------------------------------
 // Surface connection strings from the module
 // --------------------------------------------------------------------------
-output AZURE_STORAGE_CONNECTION_STRING string = storageModule.outputs.AZURE_STORAGE_CONNECTION_STRING
-output AZURE_STORAGE_CONNECTION_STRING_PUBLIC string = storageModule.outputs.AZURE_STORAGE_CONNECTION_STRING_PUBLIC
-output AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES string = storageModule.outputs.AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES
-output AZURE_STORAGE_CONNECTION_STRING_VERSIONS string = storageModule.outputs.AZURE_STORAGE_CONNECTION_STRING_VERSIONS
-output AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES_VERSIONS string = storageModule.outputs.AZURE_STORAGE_CONNECTION_STRING_SOFT_DELETES_VERSIONS
+output connection_string string = storageModule.outputs.connection_string
+output connection_string_public string = storageModule.outputs.connection_string_public
+output connection_string_soft_deletes string = storageModule.outputs.connection_string_soft_deletes
+output connection_string_versions string = storageModule.outputs.connection_string_versions
+output connection_string_soft_deletes_versions string = storageModule.outputs.connection_string_soft_deletes_versions

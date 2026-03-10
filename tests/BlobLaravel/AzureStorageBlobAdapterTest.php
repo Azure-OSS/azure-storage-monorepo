@@ -24,12 +24,12 @@ class AzureStorageBlobAdapterTest extends TestCase
     #[Test]
     public function it_resolves_from_manager(): void
     {
-        $containerClient = $this->tempContainer('laravel-');
+        $container = $this->service()->getContainerClient('noop');
 
         config(['filesystems.disks.azure' => [
             'driver' => 'azure-storage-blob',
             'connection_string' => getenv('AZURE_STORAGE_CONNECTION_STRING'),
-            'container' => $containerClient->containerName,
+            'container' => $container->containerName,
         ]]);
 
         self::assertInstanceOf(AzureStorageBlobAdapter::class, Storage::disk('azure'));
@@ -38,12 +38,12 @@ class AzureStorageBlobAdapterTest extends TestCase
     #[Test]
     public function url_uses_sas_by_default_when_using_connection_string(): void
     {
-        $containerClient = $this->tempContainer('laravel-');
+        $container = $this->tempContainer('laravel-');
 
         config(['filesystems.disks.azure' => [
             'driver' => 'azure-storage-blob',
             'connection_string' => getenv('AZURE_STORAGE_CONNECTION_STRING'),
-            'container' => $containerClient->containerName,
+            'container' => $container->containerName,
         ]]);
 
         /** @phpstan-ignore-next-line */
@@ -55,12 +55,12 @@ class AzureStorageBlobAdapterTest extends TestCase
     #[Test]
     public function url_uses_direct_public_url_when_is_public_container_is_enabled(): void
     {
-        $containerClient = $this->tempContainer('laravel-', public: true);
+        $container = $this->tempContainer('laravel-', public: true);
 
         config(['filesystems.disks.azure' => [
             'driver' => 'azure-storage-blob',
             'connection_string' => getenv('AZURE_STORAGE_CONNECTION_STRING_PUBLIC'),
-            'container' => $containerClient->containerName,
+            'container' => $container->containerName,
             'is_public_container' => true,
         ]]);
 
@@ -73,16 +73,13 @@ class AzureStorageBlobAdapterTest extends TestCase
     #[Test]
     public function driver_works_with_connection_string(): void
     {
-        $containerClient = $this->tempContainer('laravel-');
+        $container = $this->tempContainer('laravel-');
 
         config(['filesystems.disks.azure' => [
             'driver' => 'azure-storage-blob',
             'connection_string' => getenv('AZURE_STORAGE_CONNECTION_STRING'),
-            'container' => $containerClient->containerName,
+            'container' => $container->containerName,
         ]]);
-
-        $containerClient->deleteIfExists();
-        $containerClient->create();
 
         $driver = Storage::disk('azure');
 
@@ -98,7 +95,7 @@ class AzureStorageBlobAdapterTest extends TestCase
                 'cacheControl' => 'public, max-age=31536000',
             ],
         ]);
-        $properties = $containerClient->getBlobClient('cache-control.txt')->getProperties();
+        $properties = $container->getBlobClient('cache-control.txt')->getProperties();
         self::assertSame('public, max-age=31536000', $properties->cacheControl);
 
         /** @phpstan-ignore-next-line */
@@ -160,14 +157,14 @@ class AzureStorageBlobAdapterTest extends TestCase
             self::markTestSkipped('AZURE_STORAGE_BLOB_TENANT_ID, AZURE_STORAGE_BLOB_CLIENT_ID, AZURE_STORAGE_BLOB_CLIENT_SECRET are required.');
         }
 
-        $containerClient = $this->tempContainer('laravel-');
+        $container = $this->tempContainer('laravel-');
 
         $diskConfig = [
             'driver' => 'azure-storage-blob',
             'tenant_id' => $tenantId,
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
-            'container' => $containerClient->containerName,
+            'container' => $container->containerName,
         ];
         if ($hasEndpoint) {
             $diskConfig['endpoint'] = $endpoint;
@@ -176,8 +173,6 @@ class AzureStorageBlobAdapterTest extends TestCase
         }
 
         config(['filesystems.disks.azure' => $diskConfig]);
-
-        $containerClient->createIfNotExists();
 
         $driver = Storage::disk('azure');
         self::assertInstanceOf(AzureStorageBlobAdapter::class, $driver);
