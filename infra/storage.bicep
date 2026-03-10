@@ -13,35 +13,35 @@ param skuName string = 'Standard_LRS'
 var storageConfigs = [
   {
     key: 'default'
-    namePart: 'default'
+    namePart: 'd'
     softDeleteEnabled: false
     versioningEnabled: false
     allowPublicAccess: false
   }
   {
     key: 'public'
-    namePart: 'public'
+    namePart: 'p'
     softDeleteEnabled: false
     versioningEnabled: false
     allowPublicAccess: true
   }
   {
     key: 'softdeletes'
-    namePart: 'softdel'
+    namePart: 's'
     softDeleteEnabled: true
     versioningEnabled: false
     allowPublicAccess: false
   }
   {
     key: 'versions'
-    namePart: 'ver'
+    namePart: 'v'
     softDeleteEnabled: false
     versioningEnabled: true
     allowPublicAccess: false
   }
   {
     key: 'softdeletesversions'
-    namePart: 'sdver'
+    namePart: 'sv'
     softDeleteEnabled: true
     versioningEnabled: true
     allowPublicAccess: false
