@@ -25,8 +25,9 @@ trait RetryableAssertions
         $attempt = 0;
 
         while ($attempt < $maxAttempts) {
-            if ($callback()) {
-                Assert::assertTrue(true);
+            $result = $callback();
+            if ($result) {
+                Assert::assertTrue($result);
 
                 return;
             }
