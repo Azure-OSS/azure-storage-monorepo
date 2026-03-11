@@ -21,13 +21,14 @@ use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Storage\Common\Sas\SasIpRange;
 use AzureOss\Storage\Tests\CreatesTempContainers;
+use AzureOss\Storage\Tests\RetryableAssertions;
 use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class BlobContainerClientTest extends TestCase
 {
-    use CreatesTempContainers;
+    use CreatesTempContainers, RetryableAssertions;
 
     #[Test]
     public function create_blob_client_works(): void
@@ -430,10 +431,12 @@ final class BlobContainerClientTest extends TestCase
         $blob->upload('');
         $blob->setTags(['foo' => 'bar']);
 
-        sleep(1); // tagging doesn't seem to be instant
+        self::assertEventually(
+            fn () => count(iterator_to_array($container->findBlobsByTag("foo = 'bar'"))) === 1,
+            message: 'Tag propagation timed out'
+        );
 
         self::assertCount(0, iterator_to_array($container->findBlobsByTag("foo = 'noop'")));
-        self::assertCount(1, iterator_to_array($container->findBlobsByTag("foo = 'bar'")));
     }
 
     #[Test]
