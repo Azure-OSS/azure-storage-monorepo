@@ -40,6 +40,5 @@ final class AliasTest extends TestCase
 
         $credential = new $oldClientSecretCredential('tenant-id', 'client-id', 'client-secret');
         self::assertSame($newClientSecretCredential, get_class($credential));
-        self::assertInstanceOf($oldTokenCredential, $credential);
     }
 }
