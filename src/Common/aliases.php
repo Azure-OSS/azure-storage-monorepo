@@ -19,4 +19,3 @@ if (! interface_exists('AzureOss\\Storage\\Common\\Auth\\TokenCredential', false
 if (! class_exists('AzureOss\\Storage\\Common\\Auth\\ClientSecretCredential', false) && class_exists(ClientSecretCredential::class)) {
     class_alias(ClientSecretCredential::class, 'AzureOss\\Storage\\Common\\Auth\\ClientSecretCredential');
 }
-

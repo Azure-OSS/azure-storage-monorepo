@@ -43,4 +43,3 @@ final class AliasTest extends TestCase
         self::assertInstanceOf($oldTokenCredential, $credential);
     }
 }
-

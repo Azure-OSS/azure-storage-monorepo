@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common\Middleware;
 
+use AzureOss\Identity\TokenCredential;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
-use AzureOss\Identity\TokenCredential;
 use AzureOss\Storage\Common\Exceptions\RequestExceptionDeserializer;
 use GuzzleHttp\Client;
 use GuzzleHttp\HandlerStack;
