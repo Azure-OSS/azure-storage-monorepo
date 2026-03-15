@@ -4,9 +4,19 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\BlobLaravel;
 
+use AzureOss\Identity\AzureAuthorityHosts;
+use AzureOss\Identity\ClientCertificateCredential;
+use AzureOss\Identity\ClientCertificateCredentialOptions;
 use AzureOss\Identity\ClientSecretCredential;
+use AzureOss\Identity\ClientSecretCredentialOptions;
+use AzureOss\Identity\ManagedIdentityCredential;
+use AzureOss\Identity\ManagedIdentityCredentialOptions;
+use AzureOss\Identity\TokenCredential;
+use AzureOss\Identity\WorkloadIdentityCredential;
+use AzureOss\Identity\WorkloadIdentityCredentialOptions;
 use AzureOss\Storage\Blob\BlobServiceClient;
 use AzureOss\Storage\BlobFlysystem\AzureBlobStorageAdapter;
+use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use GuzzleHttp\Psr7\Uri;
 use Illuminate\Filesystem\FilesystemAdapter;
 use League\Flysystem\Config;
@@ -26,17 +36,39 @@ final class AzureStorageBlobAdapter extends FilesystemAdapter
     public bool $canProvideTemporaryUrls;
 
     /**
-     * @param  array{connection_string?: string, endpoint?: string, account_name?: string, endpoint_suffix?: string, tenant_id?: string, client_id?: string, client_secret?: string, container: string, prefix?: string, root?: string, is_public_container?: bool}  $config
+     * @param  array{
+     *     connection_string?: string,
+     *     endpoint?: string,
+     *     account_name?: string,
+     *     endpoint_suffix?: string,
+     *     credential?: string,
+     *     account_key?: string,
+     *     authority_host?: string,
+     *     tenant_id?: string,
+     *     client_id?: string,
+     *     client_secret?: string,
+     *     client_certificate_path?: string,
+     *     client_certificate_password?: string,
+     *     federated_token_file?: string,
+     *     container: string,
+     *     prefix?: string,
+     *     root?: string,
+     *     is_public_container?: bool
+     * }  $config
      */
     public function __construct(array $config)
     {
-        $serviceClient = self::createBlobServiceClient($config);
-        $containerClient = $serviceClient->getContainerClient($config['container']);
-        $this->canProvideTemporaryUrls = $containerClient->canGenerateSasUri();
+        $container = $config['container'];
+        $prefix = $config['prefix'] ?? null;
+        $root = $config['root'] ?? null;
         $isPublicContainer = $config['is_public_container'] ?? false;
+
+        $serviceClient = self::createBlobServiceClient($config);
+        $containerClient = $serviceClient->getContainerClient($container);
+        $this->canProvideTemporaryUrls = $containerClient->canGenerateSasUri();
         $adapter = new AzureBlobStorageAdapter(
             $containerClient,
-            $config['prefix'] ?? $config['root'] ?? '',
+            $prefix ?? $root ?? '',
             isPublicContainer: $isPublicContainer,
         );
 
@@ -48,27 +80,195 @@ final class AzureStorageBlobAdapter extends FilesystemAdapter
     }
 
     /**
-     * @param  array{connection_string?: string, endpoint?: string, account_name?: string, endpoint_suffix?: string, tenant_id?: string, client_id?: string, client_secret?: string, container: string}  $config
+     * @param  array{
+     *     connection_string?: string,
+     *     endpoint?: string,
+     *     account_name?: string,
+     *     endpoint_suffix?: string,
+     *     credential?: string,
+     *     account_key?: string,
+     *     authority_host?: string,
+     *     tenant_id?: string,
+     *     client_id?: string,
+     *     client_secret?: string,
+     *     client_certificate_path?: string,
+     *     client_certificate_password?: string,
+     *     federated_token_file?: string,
+     *     container: string,
+     *     prefix?: string,
+     *     root?: string,
+     *     is_public_container?: bool
+     * }  $config
      */
     private static function createBlobServiceClient(array $config): BlobServiceClient
     {
         $connectionString = $config['connection_string'] ?? null;
-        if (is_string($connectionString) && $connectionString !== '') {
+        if ($connectionString !== null && $connectionString !== '') {
+            $hasEndpointOrAccountName = isset($config['endpoint']) || isset($config['account_name']);
+            $hasAnyCredentialConfig =
+                isset($config['credential'])
+                || isset($config['account_key'])
+                || isset($config['authority_host'])
+                || isset($config['tenant_id'])
+                || isset($config['client_id'])
+                || isset($config['client_secret'])
+                || isset($config['client_certificate_path'])
+                || isset($config['client_certificate_password'])
+                || isset($config['federated_token_file']);
+
+            if ($hasEndpointOrAccountName || $hasAnyCredentialConfig) {
+                throw new \InvalidArgumentException('Cannot use both [connection_string] and token-based credentials in the disk configuration.');
+            }
+
             return BlobServiceClient::fromConnectionString($connectionString);
         }
+
+        if (! isset($config['endpoint']) && ! isset($config['account_name'])) {
+            throw new \InvalidArgumentException(
+                'Either [connection_string] or [endpoint/account_name] must be provided in the disk configuration.'
+            );
+        }
+
+        $uri = self::buildBlobEndpointUri($config);
+        $credential = self::createCredential($config);
+
+        return new BlobServiceClient($uri, $credential);
+    }
+
+    /**
+     * @param  array{
+     *     credential?: string,
+     *     account_name?: string,
+     *     account_key?: string,
+     *     authority_host?: string,
+     *     tenant_id?: string,
+     *     client_id?: string,
+     *     client_secret?: string,
+     *     client_certificate_path?: string,
+     *     client_certificate_password?: string,
+     *     federated_token_file?: string
+     * }  $config
+     */
+    private static function createCredential(array $config): StorageSharedKeyCredential|TokenCredential
+    {
+        $authorityHost = $config['authority_host'] ?? null;
+        $credentialType = $config['credential'] ?? null;
 
         $tenantId = $config['tenant_id'] ?? null;
         $clientId = $config['client_id'] ?? null;
         $clientSecret = $config['client_secret'] ?? null;
 
-        if (! is_string($tenantId) || ! is_string($clientId) || ! is_string($clientSecret)) {
-            throw new \InvalidArgumentException('Token-based credentials require [tenant_id], [client_id], and [client_secret].');
+        if ($credentialType === null) {
+            if ($tenantId !== null && $clientId !== null && $clientSecret !== null) {
+                return self::createClientSecretCredential($config, $authorityHost);
+            }
+
+            throw new \InvalidArgumentException('The [credential] must be provided in the disk configuration when not using [connection_string].');
         }
 
-        $uri = self::buildBlobEndpointUri($config);
-        $credential = new ClientSecretCredential($tenantId, $clientId, $clientSecret);
+        return match (strtolower($credentialType)) {
+            'shared_key' => self::createSharedKeyCredential($config),
+            'client_secret' => self::createClientSecretCredential($config, $authorityHost),
+            'client_certificate' => self::createClientCertificateCredential($config, $authorityHost),
+            'workload_identity' => self::createWorkloadIdentityCredential($config, $authorityHost),
+            'managed_identity' => self::createManagedIdentityCredential($config, $authorityHost),
+            default => throw new \InvalidArgumentException(
+                'Unsupported [credential]. Supported values: [shared_key, client_secret, client_certificate, workload_identity, managed_identity].',
+            ),
+        };
+    }
 
-        return new BlobServiceClient($uri, $credential);
+    /**
+     * @param  array{account_name?: string, account_key?: string}  $config
+     */
+    private static function createSharedKeyCredential(array $config): StorageSharedKeyCredential
+    {
+        $accountName = $config['account_name'] ?? null;
+        $accountKey = $config['account_key'] ?? null;
+
+        if ($accountName === null || $accountKey === null) {
+            throw new \InvalidArgumentException('The [shared_key] credential requires [account_name] and [account_key].');
+        }
+
+        return new StorageSharedKeyCredential($accountName, $accountKey);
+    }
+
+    /**
+     * @param  array{tenant_id?: string, client_id?: string, client_secret?: string}  $config
+     */
+    private static function createClientSecretCredential(array $config, ?string $authorityHost): ClientSecretCredential
+    {
+        $tenantId = $config['tenant_id'] ?? null;
+        $clientId = $config['client_id'] ?? null;
+        $clientSecret = $config['client_secret'] ?? null;
+
+        if ($tenantId === null || $clientId === null || $clientSecret === null) {
+            throw new \InvalidArgumentException('The [client_secret] credential requires [tenant_id], [client_id], and [client_secret].');
+        }
+
+        return new ClientSecretCredential(
+            $tenantId,
+            $clientId,
+            $clientSecret,
+            new ClientSecretCredentialOptions(authorityHost: $authorityHost ?? AzureAuthorityHosts::AZURE_PUBLIC_CLOUD),
+        );
+    }
+
+    /**
+     * @param  array{tenant_id?: string, client_id?: string, client_certificate_path?: string, client_certificate_password?: string}  $config
+     */
+    private static function createClientCertificateCredential(array $config, ?string $authorityHost): ClientCertificateCredential
+    {
+        $tenantId = $config['tenant_id'] ?? null;
+        $clientId = $config['client_id'] ?? null;
+        $certificatePath = $config['client_certificate_path'] ?? null;
+        $certificatePassword = $config['client_certificate_password'] ?? null;
+
+        if ($tenantId === null || $clientId === null || $certificatePath === null) {
+            throw new \InvalidArgumentException('The [client_certificate] credential requires [tenant_id], [client_id], and [client_certificate_path].');
+        }
+
+        return new ClientCertificateCredential(
+            $tenantId,
+            $clientId,
+            $certificatePath,
+            $certificatePassword,
+            new ClientCertificateCredentialOptions(authorityHost: $authorityHost ?? AzureAuthorityHosts::AZURE_PUBLIC_CLOUD),
+        );
+    }
+
+    /**
+     * @param  array{tenant_id?: string, client_id?: string, federated_token_file?: string}  $config
+     */
+    private static function createWorkloadIdentityCredential(array $config, ?string $authorityHost): WorkloadIdentityCredential
+    {
+        $tenantId = $config['tenant_id'] ?? null;
+        $clientId = $config['client_id'] ?? null;
+        $tokenFilePath = $config['federated_token_file'] ?? null;
+
+        return new WorkloadIdentityCredential(
+            new WorkloadIdentityCredentialOptions(
+                authorityHost: $authorityHost ?? AzureAuthorityHosts::AZURE_PUBLIC_CLOUD,
+                clientId: $clientId,
+                tenantId: $tenantId,
+                tokenFilePath: $tokenFilePath,
+            )
+        );
+    }
+
+    /**
+     * @param  array{client_id?: string}  $config
+     */
+    private static function createManagedIdentityCredential(array $config, ?string $authorityHost): ManagedIdentityCredential
+    {
+        $clientId = $config['client_id'] ?? null;
+
+        return new ManagedIdentityCredential(
+            new ManagedIdentityCredentialOptions(
+                authorityHost: $authorityHost ?? AzureAuthorityHosts::AZURE_PUBLIC_CLOUD,
+                clientId: $clientId,
+            )
+        );
     }
 
     /**
@@ -77,12 +277,12 @@ final class AzureStorageBlobAdapter extends FilesystemAdapter
     private static function buildBlobEndpointUri(array $config): UriInterface
     {
         $endpoint = $config['endpoint'] ?? null;
-        if (is_string($endpoint) && $endpoint !== '') {
+        if ($endpoint !== null && $endpoint !== '') {
             return new Uri(rtrim($endpoint, '/').'/');
         }
 
         $accountName = $config['account_name'] ?? null;
-        if (! is_string($accountName) || $accountName === '') {
+        if ($accountName === null || $accountName === '') {
             throw new \InvalidArgumentException('Either [endpoint] or [account_name] must be provided for token-based credentials.');
         }
 
