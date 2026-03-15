@@ -26,7 +26,7 @@ class AzureStorageBlobServiceProviderTest extends TestCase
         ]]);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Either [connection_string] or [endpoint, tenant_id, client_id, client_secret] must be provided');
+        $this->expectExceptionMessage('Either [connection_string] or [endpoint/account_name] must be provided');
 
         Storage::disk('azure-invalid');
     }
@@ -48,6 +48,92 @@ class AzureStorageBlobServiceProviderTest extends TestCase
         $this->expectExceptionMessage('Cannot use both [connection_string] and token-based credentials');
 
         Storage::disk('azure-both');
+    }
+
+    #[Test]
+    public function it_throws_when_token_credentials_missing_endpoint_and_account_name(): void
+    {
+        config(['filesystems.disks.azure-token-missing-endpoint' => [
+            'driver' => 'azure-storage-blob',
+            'container' => 'test-container',
+        ]]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Either [connection_string] or [endpoint/account_name] must be provided');
+
+        Storage::disk('azure-token-missing-endpoint');
+    }
+
+    #[Test]
+    public function it_throws_when_token_credentials_cannot_be_inferred(): void
+    {
+        config(['filesystems.disks.azure-infer-fail' => [
+            'driver' => 'azure-storage-blob',
+            'endpoint' => 'https://test.blob.core.windows.net',
+            'container' => 'test-container',
+        ]]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The [credential] must be provided in the disk configuration when not using [connection_string].');
+
+        Storage::disk('azure-infer-fail');
+    }
+
+    #[Test]
+    public function it_resolves_with_managed_identity_credential_without_explicit_ids(): void
+    {
+        config(['filesystems.disks.azure-mi' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => 'managed_identity',
+            'endpoint' => 'https://test.blob.core.windows.net',
+            'client_id' => 'user-assigned-mi-client-id',
+            'container' => 'test-container',
+        ]]);
+
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, Storage::disk('azure-mi'));
+    }
+
+    #[Test]
+    public function it_resolves_with_system_assigned_managed_identity(): void
+    {
+        config(['filesystems.disks.azure-mi-system' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => 'managed_identity',
+            'endpoint' => 'https://test.blob.core.windows.net',
+            'container' => 'test-container',
+        ]]);
+
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, Storage::disk('azure-mi-system'));
+    }
+
+    #[Test]
+    public function it_resolves_with_workload_identity_credential_without_explicit_ids(): void
+    {
+        config(['filesystems.disks.azure-wi' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => 'workload_identity',
+            'endpoint' => 'https://test.blob.core.windows.net',
+            'tenant_id' => 'tenant',
+            'client_id' => 'client',
+            'container' => 'test-container',
+        ]]);
+
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, Storage::disk('azure-wi'));
+    }
+
+    #[Test]
+    public function it_is_backwards_compatible_with_client_secret_when_credential_is_omitted(): void
+    {
+        config(['filesystems.disks.azure-legacy-client-secret' => [
+            'driver' => 'azure-storage-blob',
+            'endpoint' => 'https://test.blob.core.windows.net',
+            'tenant_id' => 'tenant',
+            'client_id' => 'client',
+            'client_secret' => 'secret',
+            'container' => 'test-container',
+        ]]);
+
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, Storage::disk('azure-legacy-client-secret'));
     }
 
     #[Test]
@@ -252,6 +338,22 @@ class AzureStorageBlobServiceProviderTest extends TestCase
     }
 
     #[Test]
+    public function it_throws_when_credential_has_wrong_type(): void
+    {
+        config(['filesystems.disks.azure' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => ['invalid'],
+            'endpoint' => 'https://test.blob.core.windows.net',
+            'container' => 'test-container',
+        ]]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The [credential] must be a string');
+
+        Storage::disk('azure');
+    }
+
+    #[Test]
     public function null_prefix_is_ignored(): void
     {
         config(['filesystems.disks.azure' => [
@@ -296,6 +398,7 @@ class AzureStorageBlobServiceProviderTest extends TestCase
         config(['filesystems.disks.azure' => [
             'driver' => 'azure-storage-blob',
             'connection_string' => null,
+            'credential' => 'client_secret',
             'endpoint' => 'https://test.blob.core.windows.net',
             'tenant_id' => 'tenant',
             'client_id' => 'client',
