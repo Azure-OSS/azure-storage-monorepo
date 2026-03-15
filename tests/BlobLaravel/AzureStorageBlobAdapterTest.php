@@ -310,6 +310,88 @@ class AzureStorageBlobAdapterTest extends TestCase
     }
 
     #[Test]
+    public function it_resolves_with_shared_key_credential_using_account_key_option(): void
+    {
+        config(['filesystems.disks.azure-shared-key' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => 'shared_key',
+            'account_name' => 'testaccount',
+            'account_key' => 'bXlrZXk=', // base64 for "mykey"
+            'endpoint_suffix' => 'example.invalid',
+            'container' => 'test-container',
+        ]]);
+
+        $disk = Storage::disk('azure-shared-key');
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, $disk);
+        self::assertTrue($disk->providesTemporaryUrls());
+    }
+
+    #[Test]
+    public function it_builds_blob_endpoint_using_default_endpoint_suffix_when_missing(): void
+    {
+        config(['filesystems.disks.azure-shared-key-default-suffix' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => 'shared_key',
+            'account_name' => 'testaccount',
+            'account_key' => 'bXlrZXk=',
+            'container' => 'test-container',
+        ]]);
+
+        $disk = Storage::disk('azure-shared-key-default-suffix');
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, $disk);
+    }
+
+    #[Test]
+    public function it_throws_when_shared_key_missing_account_key(): void
+    {
+        config(['filesystems.disks.azure-shared-key-missing-key' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => 'shared_key',
+            'account_name' => 'testaccount',
+            'container' => 'test-container',
+        ]]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The [shared_key] credential requires [account_name] and [account_key].');
+
+        Storage::disk('azure-shared-key-missing-key');
+    }
+
+    #[Test]
+    public function it_throws_when_endpoint_missing_and_account_name_is_empty_string(): void
+    {
+        config(['filesystems.disks.azure-empty-account-name' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => 'managed_identity',
+            'account_name' => '',
+            'container' => 'test-container',
+        ]]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Either [endpoint] or [account_name] must be provided for token-based credentials.');
+
+        Storage::disk('azure-empty-account-name');
+    }
+
+    #[Test]
+    public function it_resolves_with_client_certificate_credential(): void
+    {
+        config(['filesystems.disks.azure-client-certificate' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => 'client_certificate',
+            'endpoint' => 'https://test.blob.core.windows.net',
+            'tenant_id' => 'tenant',
+            'client_id' => 'client',
+            'client_certificate_path' => '/path/to/cert.pem',
+            'container' => 'test-container',
+        ]]);
+
+        $disk = Storage::disk('azure-client-certificate');
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, $disk);
+        self::assertFalse($disk->providesTemporaryUrls());
+    }
+
+    #[Test]
     public function it_throws_when_container_missing(): void
     {
         config(['filesystems.disks.azure-no-container' => [
