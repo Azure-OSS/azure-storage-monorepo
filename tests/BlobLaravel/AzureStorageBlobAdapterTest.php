@@ -310,6 +310,22 @@ class AzureStorageBlobAdapterTest extends TestCase
     }
 
     #[Test]
+    public function it_resolves_with_client_secret_credential(): void
+    {
+        config(['filesystems.disks.azure-client-secret' => [
+            'driver' => 'azure-storage-blob',
+            'credential' => 'client_secret',
+            'endpoint' => 'https://test.blob.core.windows.net',
+            'tenant_id' => 'tenant',
+            'client_id' => 'client',
+            'client_secret' => 'secret',
+            'container' => 'test-container',
+        ]]);
+
+        self::assertInstanceOf(AzureStorageBlobAdapter::class, Storage::disk('azure-client-secret'));
+    }
+
+    #[Test]
     public function it_resolves_with_shared_key_credential_using_account_key_option(): void
     {
         config(['filesystems.disks.azure-shared-key' => [
