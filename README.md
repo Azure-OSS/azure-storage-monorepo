@@ -21,6 +21,10 @@ This monorepo contains the following packages:
 
 The core Azure Blob Storage PHP SDK. This is the main package that provides the core functionality for interacting with Azure Blob Storage.
 
+### [azure-oss/storage-queue](https://packagist.org/packages/azure-oss/storage-queue) ![Version](https://img.shields.io/packagist/v/azure-oss/storage-queue) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-queue)
+
+Azure Storage Queue PHP SDK. Provides functionality for interacting with Azure Storage Queues, including queue and message operations.
+
 ### [azure-oss/storage-blob-flysystem](https://packagist.org/packages/azure-oss/storage-blob-flysystem) ![Version](https://img.shields.io/packagist/v/azure-oss/storage-blob-flysystem) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-blob-flysystem)
 
 Flysystem adapter for Azure Storage PHP. Provides integration with the [Flysystem](https://flysystem.thephpleague.com/) filesystem abstraction library.
@@ -29,17 +33,13 @@ Flysystem adapter for Azure Storage PHP. Provides integration with the [Flysyste
 
 Laravel filesystem driver for Azure Storage Blob. Provides seamless integration with Laravel's filesystem abstraction.
 
-### [azure-oss/storage-blob-common](https://packagist.org/packages/azure-oss/storage-common) ![Version](https://img.shields.io/packagist/v/azure-oss/storage-common) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-common)
+### [azure-oss/storage-queue-laravel](https://packagist.org/packages/azure-oss/storage-queue-laravel) ![Version](https://img.shields.io/packagist/v/azure-oss/storage-queue-laravel) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-queue-laravel)
+
+Laravel Queue connector for Azure Storage Queues. Provides integration with Laravel's queue system.
+
+### [azure-oss/storage-common](https://packagist.org/packages/azure-oss/storage-common) ![Version](https://img.shields.io/packagist/v/azure-oss/storage-common) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-common)
 
 Common utilities and shared components for the Azure Storage PHP SDK. This package contains reusable functionality used across the Azure Storage Blob, Queue, and related integrations.
-
-### [azure-oss/storage-queue](https://packagist.org/packages/azure-oss/storage-queue)
-
-Under construction.
-
-### [azure-oss/storage-queue-laravel](https://packagist.org/packages/azure-oss/storage-queue-laravel)
-
-Under construction.
 
 ## Other packages by us
 

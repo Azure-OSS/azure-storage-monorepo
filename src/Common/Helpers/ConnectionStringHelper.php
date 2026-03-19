@@ -18,6 +18,8 @@ final class ConnectionStringHelper
 
     private const DEV_BLOB_ENDPOINT = 'http://127.0.0.1:10000/devstoreaccount1';
 
+    private const DEV_QUEUE_ENDPOINT = 'http://127.0.0.1:10001/devstoreaccount1';
+
     private const DEV_BLOB_ACCOUNT_NAME = 'devstoreaccount1';
 
     private const DEV_BLOB_ACCOUNT_KEY = 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==';
@@ -34,6 +36,28 @@ final class ConnectionStringHelper
             $uri = $segments['BlobEndpoint'];
         } elseif (isset($segments['AccountName'], $segments['EndpointSuffix'])) {
             $uri = sprintf('%s.blob.%s', $segments['AccountName'], $segments['EndpointSuffix']);
+        } else {
+            return null;
+        }
+
+        $uriWithoutScheme = preg_replace('(^https?://)', '', $uri);
+        $scheme = $segments['DefaultEndpointsProtocol'] ?? 'https';
+
+        return new Uri("$scheme://$uriWithoutScheme");
+    }
+
+    public static function getQueueEndpoint(string $connectionString): ?UriInterface
+    {
+        if ($connectionString === self::DEV_CONNECTION_STRING_SHORTCUT) {
+            return new Uri(self::DEV_QUEUE_ENDPOINT);
+        }
+
+        $segments = self::getSegments($connectionString);
+
+        if (isset($segments['QueueEndpoint'])) {
+            $uri = $segments['QueueEndpoint'];
+        } elseif (isset($segments['AccountName'], $segments['EndpointSuffix'])) {
+            $uri = sprintf('%s.queue.%s', $segments['AccountName'], $segments['EndpointSuffix']);
         } else {
             return null;
         }

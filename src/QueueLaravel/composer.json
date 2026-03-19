@@ -1,0 +1,31 @@
+{
+  "name": "azure-oss/storage-queue-laravel",
+  "description": "Azure Storage Queue driver for Laravel",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "AzureOss\\\\Storage\\\\QueueLaravel\\\\": ""
+    }
+  },
+  "authors": [
+    {
+      "name": "Brecht Vermeersch",
+      "email": "brechtvermeersch@outlook.be"
+    }
+  ],
+  "require": {
+    "php": "^8.1",
+    "illuminate/queue": "^10|^11|^12|^13",
+    "illuminate/support": "^10|^11|^12|^13",
+    "azure-oss/storage": "^1.4"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "AzureOss\\Storage\\QueueLaravel\\AzureStorageQueueServiceProvider"
+      ]
+    }
+  }
+}
+
