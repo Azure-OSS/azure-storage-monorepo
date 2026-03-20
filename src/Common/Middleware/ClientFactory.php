@@ -59,6 +59,7 @@ final class ClientFactory
                 503, // Service Unavailable
                 504, // Gateway Timeout
             ],
+            'retry_on_timeout' => true
         ]);
     }
 }
