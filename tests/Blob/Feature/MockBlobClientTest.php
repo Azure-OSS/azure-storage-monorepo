@@ -136,6 +136,36 @@ class MockBlobClientTest extends TestCase
     }
 
     #[Test]
+    public function upload_unknown_sized_stream_uses_default_block_size_when_not_provided(): void
+    {
+        Server::enqueue([
+            ...array_fill(0, 8, new Response(200)), // 7 chunks + 1 commit request
+            new Response(501),
+        ]);
+
+        $file = $this->tempFile(50_000_000);
+
+        $stream = new class($file) implements StreamInterface
+        {
+            use StreamDecoratorTrait;
+
+            public function getSize(): ?int
+            {
+                return null;
+            }
+        };
+
+        $this->blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: null));
+
+        $requests = Server::received();
+
+        self::assertCount(8, $requests);
+        self::assertSame('8000000', $requests[0]->getHeaderLine('Content-Length'));
+        parse_str($requests[7]->getUri()->getQuery(), $query);
+        self::assertSame('blocklist', $query['comp'] ?? null);
+    }
+
+    #[Test]
     public function upload_uses_single_upload_when_size_equals_initial_transfer_size(): void
     {
         Server::enqueue([
@@ -171,9 +201,10 @@ class MockBlobClientTest extends TestCase
         $this->blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
 
         $requests = Server::received();
+        $lastRequestIndex = count($requests) - 1;
 
         self::assertGreaterThan(1, count($requests));
-        parse_str($requests[array_key_last($requests)]->getUri()->getQuery(), $query);
+        parse_str($requests[$lastRequestIndex]->getUri()->getQuery(), $query);
         self::assertSame('blocklist', $query['comp'] ?? null);
     }
 
@@ -201,5 +232,108 @@ class MockBlobClientTest extends TestCase
 
         self::assertCount(2, $requests);
         self::assertSame(base64_encode($contentHash), $requests[1]->getHeaderLine('x-ms-blob-content-md5'));
+    }
+
+    #[Test]
+    public function upload_known_size_stream_automatically_calculates_block_size_when_not_provided(): void
+    {
+        Server::enqueue([
+            new Response(200),
+            new Response(200),
+            new Response(501),
+        ]);
+
+        $stream = new class implements StreamInterface
+        {
+            private int $remaining = 8_000_001;
+
+            public function __toString(): string
+            {
+                return '';
+            }
+
+            public function close(): void {}
+
+            public function detach()
+            {
+                return null;
+            }
+
+            public function getSize(): int
+            {
+                return 400_000_050_000;
+            }
+
+            public function tell(): int
+            {
+                return 8_000_001 - $this->remaining;
+            }
+
+            public function eof(): bool
+            {
+                return $this->remaining === 0;
+            }
+
+            public function isSeekable(): bool
+            {
+                return false;
+            }
+
+            public function seek($offset, $whence = SEEK_SET): void
+            {
+                throw new \RuntimeException('Not seekable.');
+            }
+
+            public function rewind(): void
+            {
+                throw new \RuntimeException('Not seekable.');
+            }
+
+            public function isWritable(): bool
+            {
+                return false;
+            }
+
+            public function write($string): int
+            {
+                throw new \RuntimeException('Not writable.');
+            }
+
+            public function isReadable(): bool
+            {
+                return true;
+            }
+
+            public function read($length): string
+            {
+                if ($this->remaining === 0) {
+                    return '';
+                }
+
+                $chunkLength = min($length, $this->remaining);
+                $this->remaining -= $chunkLength;
+
+                return str_repeat('a', $chunkLength);
+            }
+
+            public function getContents(): string
+            {
+                return $this->read($this->remaining);
+            }
+
+            public function getMetadata($key = null): mixed
+            {
+                return $key === null ? [] : null;
+            }
+        };
+
+        $this->blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: null));
+
+        $requests = Server::received();
+
+        self::assertCount(2, $requests);
+        self::assertSame('8000001', $requests[0]->getHeaderLine('Content-Length'));
+        parse_str($requests[1]->getUri()->getQuery(), $query);
+        self::assertSame('blocklist', $query['comp'] ?? null);
     }
 }

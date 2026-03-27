@@ -10,6 +10,7 @@ use AzureOss\Storage\Blob\Exceptions\CannotVerifyCopySourceException;
 use AzureOss\Storage\Blob\Exceptions\ContainerNotFoundException;
 use AzureOss\Storage\Blob\Exceptions\NoPendingCopyOperationException;
 use AzureOss\Storage\Blob\Exceptions\TagsTooLargeException;
+use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
 use AzureOss\Storage\Blob\Models\CopyStatus;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
 use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
@@ -309,7 +310,6 @@ final class BlobClientTest extends TestCase
         self::assertEquals($beforeUploadContent, $result->content->getContents());
         self::assertEquals(md5($beforeUploadContent), $result->properties->contentMD5);
     }
-
 
     #[Test]
     public function upload_works_with_empty_file(): void
