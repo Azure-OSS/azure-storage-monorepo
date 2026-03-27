@@ -352,8 +352,6 @@ final class BlobContainerClientTest extends TestCase
     #[Test]
     public function generate_sas_uri_works(): void
     {
-        $this->expectNotToPerformAssertions();
-
         $container = $this->tempContainer();
 
         $sas = $container->generateSasUri(
@@ -367,7 +365,19 @@ final class BlobContainerClientTest extends TestCase
 
         $sasServiceClient = new BlobContainerClient($sas);
 
-        iterator_to_array($sasServiceClient->getBlobs());
+        // Azure can transiently reject the first signed list request right after container creation.
+        self::assertEventually(
+            callback: function () use ($sasServiceClient): bool {
+                try {
+                    iterator_to_array($sasServiceClient->getBlobs());
+
+                    return true;
+                } catch (\Throwable) {
+                    return false;
+                }
+            },
+            message: 'Container SAS list request timed out'
+        );
     }
 
     #[Test]
