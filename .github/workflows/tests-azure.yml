@@ -14,6 +14,7 @@ jobs:
     environment: azure-testing
 
     strategy:
+      fail-fast: false
       matrix:
         operating-system:
           - "ubuntu-latest"

@@ -7,6 +7,7 @@ namespace AzureOss\Storage\Tests\BlobFlysystem;
 use AzureOss\Storage\Blob\BlobContainerClient;
 use AzureOss\Storage\Blob\BlobServiceClient;
 use AzureOss\Storage\BlobFlysystem\AzureBlobStorageAdapter;
+use GuzzleHttp\Psr7\Query;
 use League\Flysystem\AdapterTestUtilities\FilesystemAdapterTestCase;
 use League\Flysystem\Config;
 use League\Flysystem\FilesystemAdapter;
@@ -281,5 +282,37 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
         self::assertStringContainsString('sig=', $url);
         self::assertStringContainsString('se=', $url);
         self::assertStringContainsString('sp=', $url);
+    }
+
+    #[Test]
+    public function temporary_url_passes_response_headers_to_sas(): void
+    {
+        $this->givenWeHaveAnExistingFile('test-file.txt');
+
+        $adapter = new AzureBlobStorageAdapter(
+            self::createContainerClient(),
+            self::$containerName,
+        );
+
+        $url = $adapter->temporaryUrl('test-file.txt', new \DateTimeImmutable('+5 minutes'), new Config([
+            'httpHeaders' => [
+                'cacheControl' => 'public, max-age=60',
+                'contentDisposition' => 'attachment; filename="download.txt"',
+                'contentEncoding' => 'identity',
+                'contentLanguage' => 'en-US',
+                'contentType' => 'text/plain',
+            ],
+        ]));
+
+        $queryString = parse_url($url, PHP_URL_QUERY);
+        self::assertIsString($queryString);
+
+        $query = Query::parse($queryString);
+
+        self::assertSame('public, max-age=60', $query['rscc'] ?? null);
+        self::assertSame('attachment; filename="download.txt"', $query['rscd'] ?? null);
+        self::assertSame('identity', $query['rsce'] ?? null);
+        self::assertSame('en-US', $query['rscl'] ?? null);
+        self::assertSame('text/plain', $query['rsct'] ?? null);
     }
 }
