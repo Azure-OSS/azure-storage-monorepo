@@ -194,9 +194,27 @@ final class BlobClientTest extends TestCase
         self::assertEquals('text/plain', $properties->contentType);
         self::assertEquals(1000, $properties->contentLength);
 
-        $afterUploadContent = $blob->downloadStreaming()->content;
+        $afterUploadContent = $blob->downloadStreaming()->content->getContents();
 
         self::assertEquals($beforeUploadContent, $afterUploadContent);
+    }
+
+    #[Test]
+    public function upload_works_with_size_equal_to_initial_transfer_size(): void
+    {
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+        $file = $this->tempFile(1000);
+
+        $beforeUploadContent = $file->getContents();
+        $file->rewind();
+
+        $blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 1000, maximumTransferSize: 100));
+
+        $result = $blob->downloadStreaming();
+
+        self::assertEquals($beforeUploadContent, $result->content->getContents());
+        self::assertEquals(1000, $result->properties->contentLength);
     }
 
     #[Test]
