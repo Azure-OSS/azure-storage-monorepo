@@ -193,8 +193,8 @@ final class BlobServiceClientTest extends TestCase
                 ->setResourceTypes(new AccountSasResourceTypes(service: true))
                 ->setIpRange(new SasIpRange('0.0.0.0', '255.255.255.255'))
                 ->setVersion(ApiVersion::LATEST->value)
-                ->setStartsOn((new \DateTime))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
+                ->setStartsOn(new \DateTimeImmutable('-5 minutes'))
+                ->setExpiresOn(new \DateTimeImmutable('+5 minutes')),
         );
 
         $sasServiceClient = new BlobServiceClient($sas);
