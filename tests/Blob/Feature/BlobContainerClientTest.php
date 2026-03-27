@@ -361,8 +361,8 @@ final class BlobContainerClientTest extends TestCase
                 ->setPermissions(new BlobContainerSasPermissions(list: true))
                 ->setVersion(ApiVersion::LATEST->value)
                 ->setIPRange(new SasIpRange('0.0.0.0', '255.255.255.255'))
-                ->setStartsOn(new \DateTime)
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
+                ->setStartsOn(new \DateTimeImmutable('-5 minutes'))
+                ->setExpiresOn(new \DateTimeImmutable('+5 minutes')),
         );
 
         $sasServiceClient = new BlobContainerClient($sas);
