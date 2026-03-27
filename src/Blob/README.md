@@ -1,7 +1,7 @@
-# Azure Storage PHP
+# Azure Storage Blob PHP
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/azure-oss/storage.svg)](https://packagist.org/packages/azure-oss/storage)
-[![Packagist Downloads](https://img.shields.io/packagist/dt/azure-oss/storage)](https://packagist.org/packages/azure-oss/storage)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/azure-oss/storage-blob.svg)](https://packagist.org/packages/azure-oss/storage-blob)
+[![Packagist Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-blob)](https://packagist.org/packages/azure-oss/storage-blob)
 
 Community-driven PHP SDKs for Azure, because Microsoft won't.
 
@@ -12,6 +12,9 @@ We picked up where they left off.
 <img src="https://azure-oss.github.io/img/logo.svg" width="150" alt="Screenshot">
 
 Our other packages:
+
+- **[azure-oss/storage](https://packagist.org/packages/azure-oss/storage)** – Meta package with Blob + Queue SDKs  
+  ![Downloads](https://img.shields.io/packagist/dt/azure-oss/storage)
 
 - **[azure-oss/storage-blob-flysystem](https://packagist.org/packages/azure-oss/storage-blob-flysystem)** – Flysystem adapter  
   ![Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-blob-flysystem)
@@ -56,7 +59,7 @@ You can read the documentation [here](https://azure-oss.github.io).
 ## Install
 
 ```shell
-composer require azure-oss/storage
+composer require azure-oss/storage-blob
 ```
 
 ## Quickstart
@@ -97,4 +100,4 @@ $blob->deleteIfExists();
 
 ## License
 
-This project is released under the MIT License. See [LICENSE](https://github.com/Azure-OSS/azure-storage-php-monorepo/blob/02759360186be8d2d04bd1e9b2aba3839b6d39dc/LICENSE) for details.
+This project is released under the MIT License. See [LICENSE](https://github.com/Azure-OSS/azure-storage-monorepo/blob/main/LICENSE) for details.

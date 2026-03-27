@@ -6,14 +6,15 @@ if ('cli' !== PHP_SAPI) {
 }
 
 $mainRepo = 'https://github.com/Azure-OSS/azure-storage-monorepo';
-exec('find src -name composer.json', $packages);
+exec('find src meta -name composer.json 2>/dev/null', $packages);
 
 foreach ($packages as $package) {
     $package = dirname($package);
-    $c = file_get_contents($package.'/.gitattributes');
+    $gitattributesFile = $package.'/.gitattributes';
+    $c = file_exists($gitattributesFile) ? file_get_contents($gitattributesFile) : '';
     $c = preg_replace('{^/\.git.*+\n}m', '', $c);
     $c .= "/.git* export-ignore\n";
-    file_put_contents($package.'/.gitattributes', $c);
+    file_put_contents($gitattributesFile, $c);
 
     @mkdir($package.'/.github');
     file_put_contents($package.'/.github/PULL_REQUEST_TEMPLATE.md', <<<EOTXT

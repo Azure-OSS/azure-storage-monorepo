@@ -2,11 +2,12 @@
 
 ## Overview
 
-This repository is a PHP monorepo for the Azure Storage SDKs maintained under the `azure-oss` namespace. The codebase is organized by package inside `src/`, with shared infrastructure extracted into `src/Common` and feature-specific SDKs and integrations layered on top of it.
+This repository is a PHP monorepo for the Azure Storage SDKs maintained under the `azure-oss` namespace. The codebase is organized by package inside `src/`, with shared infrastructure extracted into `src/Common` and feature-specific SDKs and integrations layered on top of it. A lightweight meta package also lives in `meta/` and is used for the umbrella `azure-oss/storage` distribution.
 
 At the root you will find:
 
 - `composer.json`: the monorepo-level package, shared dependencies, and root autoload setup.
+- `meta/`: the publishable meta package for `azure-oss/storage`, which currently requires the Blob and Queue SDKs.
 - `src/`: all package source code.
 - `tests/`: the test suites, grouped by package.
 - `infra/`: Azure Bicep templates for provisioning storage resources used during development or validation.
@@ -26,9 +27,19 @@ Shared primitives used across the storage packages.
 
 This is the lowest-level package in the repo. Blob and queue code depend on it.
 
+### `meta`
+
+The umbrella Composer package published as `azure-oss/storage`.
+
+- Contains package metadata only; there is no runtime source code here.
+- Requires the Blob and Queue SDK packages so consumers can install a single package.
+- This is the package that should be subtree-split to the main `storage` repository.
+
+Use this package for umbrella package metadata, dependency aggregation, and split-repo docs.
+
 ### `src/Blob`
 
-The core Azure Blob Storage SDK.
+The core Azure Blob Storage SDK, published as `azure-oss/storage-blob`.
 
 - Top-level clients:
   - `BlobServiceClient.php`
@@ -96,11 +107,14 @@ The packages are layered roughly like this:
 
 `Common` -> `Blob` -> `QueueLaravel`
 
+`meta` -> `Blob` / `Queue`
+
 In practice:
 
 - Put reusable HTTP/auth/SAS utilities in `src/Common`.
 - Put Azure Blob API behavior in `src/Blob`.
 - Put Azure Queue API behavior in `src/Queue`.
+- Put umbrella Composer-package wiring in `meta/`.
 - Put Flysystem-specific behavior in `src/BlobFlysystem`.
 - Put Laravel-specific filesystem behavior in `src/BlobLaravel`.
 - Put Laravel-specific queue behavior in `src/QueueLaravel`.
@@ -124,8 +138,8 @@ When editing a package, start by checking its matching test directory. Feature t
 
 - Root autoloading maps `AzureOss\\Storage\\` to `src/`, while individual subpackages also ship their own `composer.json` files where applicable.
 - `aliases.php` files are there for backwards compatibility and legacy class-name support, not as a primary extension mechanism.
-- Package READMEs live beside the package code in `src/<Package>/README.md`.
-- The `.github/sync-package.php` script scans package manifests in `src/` and maintains subtree-split metadata for publishable packages.
+- Package READMEs live beside the package code in `src/<Package>/README.md`, with the umbrella package README in `meta/README.md`.
+- The `.github/sync-package.php` script scans package manifests in `src/` and `meta/` and maintains subtree-split metadata for publishable packages.
 - `infra/*.bicep` contains deployment templates, not runtime application code.
 - Code style is enforced with Laravel Pint via `vendor/bin/pint`, using the rules in `pint.json`.
 - Static analysis is enforced with PHPStan via `vendor/bin/phpstan --no-progress --memory-limit=2G`, configured in `phpstan.neon` at level 10 over `src/` and `tests/`.

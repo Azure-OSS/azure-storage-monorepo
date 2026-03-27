@@ -14,9 +14,15 @@ jobs:
           - prefix: src/Common
             repo: Azure-OSS/azure-storage-common
             secret: DEPLOY_KEY_COMMON
-          - prefix: src/Blob
+          - prefix: meta
             repo: Azure-OSS/azure-storage-php
+            secret: DEPLOY_KEY_META
+          - prefix: src/Blob
+            repo: Azure-OSS/azure-storage-blob-php
             secret: DEPLOY_KEY_BLOB
+          - prefix: src/Queue
+            repo: Azure-OSS/azure-storage-queue-php
+            secret: DEPLOY_KEY_QUEUE
           - prefix: src/BlobFlysystem
             repo: Azure-OSS/azure-storage-php-adapter-flysystem
             secret: DEPLOY_KEY_BLOB_FLYSYSTEM

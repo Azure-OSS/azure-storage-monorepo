@@ -19,7 +19,11 @@ This monorepo contains the following packages:
 
 ### [azure-oss/storage](https://packagist.org/packages/azure-oss/storage) ![Version](https://img.shields.io/packagist/v/azure-oss/storage) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage)
 
-The core Azure Blob Storage PHP SDK. This is the main package that provides the core functionality for interacting with Azure Blob Storage.
+Meta package that installs both the Blob and Queue SDKs. Use this when you want a single Composer dependency for the core Azure Storage clients.
+
+### [azure-oss/storage-blob](https://packagist.org/packages/azure-oss/storage-blob) ![Version](https://img.shields.io/packagist/v/azure-oss/storage-blob) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-blob)
+
+The core Azure Blob Storage PHP SDK. Use this when you only need Blob Storage support.
 
 ### [azure-oss/storage-queue](https://packagist.org/packages/azure-oss/storage-queue) ![Version](https://img.shields.io/packagist/v/azure-oss/storage-queue) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-queue)
 
