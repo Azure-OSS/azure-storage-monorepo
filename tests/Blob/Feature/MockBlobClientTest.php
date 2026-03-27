@@ -6,6 +6,7 @@ namespace AzureOss\Storage\Tests\Blob\Feature;
 
 use AzureOss\Storage\Blob\BlobClient;
 use AzureOss\Storage\Blob\BlobServiceClient;
+use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
 use AzureOss\Storage\Tests\CreatesTempFiles;
 use GuzzleHttp\Psr7\Response;
@@ -41,8 +42,6 @@ class MockBlobClientTest extends TestCase
     #[Test]
     public function upload_single_sends_correct_amount_of_requests(): void
     {
-        $this->expectNotToPerformAssertions();
-
         Server::enqueue([
             new Response(200), // only one request
             new Response(501), // fail if more requests
@@ -50,13 +49,17 @@ class MockBlobClientTest extends TestCase
 
         $file = $this->tempFile(1000);
         $this->blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 2000));
+
+        $requests = Server::received();
+
+        self::assertCount(1, $requests);
+        self::assertSame('', $requests[0]->getUri()->getQuery());
+        self::assertSame('BlockBlob', $requests[0]->getHeaderLine('x-ms-blob-type'));
     }
 
     #[Test]
     public function upload_parallel_blocks_sends_correct_amount_of_requests(): void
     {
-        $this->expectNotToPerformAssertions(); // should not throw because of the 501
-
         Server::enqueue([
             ...array_fill(0, 11, new Response(200)), // 10 chunks + 1 commit request
             new Response(501), // fail if more requests
@@ -64,13 +67,23 @@ class MockBlobClientTest extends TestCase
 
         $file = $this->tempFile(50_000_000);
         $this->blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
+
+        $requests = Server::received();
+
+        self::assertCount(11, $requests);
+        foreach (array_slice($requests, 0, 10) as $request) {
+            parse_str($request->getUri()->getQuery(), $query);
+            self::assertSame('block', $query['comp'] ?? null);
+            self::assertArrayHasKey('blockid', $query);
+        }
+
+        parse_str($requests[10]->getUri()->getQuery(), $query);
+        self::assertSame('blocklist', $query['comp'] ?? null);
     }
 
     #[Test]
     public function upload_parallel_blocks_sends_correct_amount_of_requests_for_small_files(): void
     {
-        $this->expectNotToPerformAssertions(); // should not throw because of the 501
-
         Server::enqueue([
             ...array_fill(0, 2, new Response(200)), // 1 chunks + 1 commit request
             new Response(501), // fail if more requests
@@ -78,13 +91,19 @@ class MockBlobClientTest extends TestCase
 
         $file = $this->tempFile(50_000);
         $this->blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 8_000_000));
+
+        $requests = Server::received();
+
+        self::assertCount(2, $requests);
+        parse_str($requests[0]->getUri()->getQuery(), $firstQuery);
+        parse_str($requests[1]->getUri()->getQuery(), $secondQuery);
+        self::assertSame('block', $firstQuery['comp'] ?? null);
+        self::assertSame('blocklist', $secondQuery['comp'] ?? null);
     }
 
     #[Test]
-    public function upload_sequential_blocks_sends_correct_amount_of_requests(): void
+    public function upload_unknown_sized_stream_uses_block_upload_requests(): void
     {
-        $this->expectNotToPerformAssertions(); // should not throw because of the 501
-
         Server::enqueue([
             ...array_fill(0, 11, new Response(200)), // 10 chunks + 1 commit request
             new Response(501), // fail if more requests
@@ -103,13 +122,39 @@ class MockBlobClientTest extends TestCase
         };
 
         $this->blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
+
+        $requests = Server::received();
+
+        self::assertCount(11, $requests);
+        foreach (array_slice($requests, 0, 10) as $request) {
+            parse_str($request->getUri()->getQuery(), $query);
+            self::assertSame('block', $query['comp'] ?? null);
+        }
+
+        parse_str($requests[10]->getUri()->getQuery(), $query);
+        self::assertSame('blocklist', $query['comp'] ?? null);
+    }
+
+    #[Test]
+    public function upload_uses_single_upload_when_size_equals_initial_transfer_size(): void
+    {
+        Server::enqueue([
+            new Response(200),
+            new Response(501),
+        ]);
+
+        $file = $this->tempFile(1000);
+        $this->blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 1000));
+
+        $requests = Server::received();
+
+        self::assertCount(1, $requests);
+        self::assertSame('', $requests[0]->getUri()->getQuery());
     }
 
     #[Test]
     public function upload_parallel_blocks_sends_correct_amount_of_requests_with_a_network_request(): void
     {
-        $this->expectNotToPerformAssertions(); // should not throw because of the 501
-
         Server::enqueue([
             new Response(200, body: str_repeat('X', 50_000_000)), // stream for fopen
             ...array_fill(0, 20, new Response(200)), // with network streams some chunks in the beginning are smaller. It should be less than 20 requests still.
@@ -124,5 +169,37 @@ class MockBlobClientTest extends TestCase
         }
 
         $this->blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
+
+        $requests = Server::received();
+
+        self::assertGreaterThan(1, count($requests));
+        parse_str($requests[array_key_last($requests)]->getUri()->getQuery(), $query);
+        self::assertSame('blocklist', $query['comp'] ?? null);
+    }
+
+    #[Test]
+    public function upload_block_upload_preserves_explicit_content_hash_header(): void
+    {
+        Server::enqueue([
+            new Response(200),
+            new Response(200),
+            new Response(501),
+        ]);
+
+        $file = $this->tempFile(1000);
+        $contentHash = hash('md5', $file->getContents(), binary: true);
+        $file->rewind();
+
+        $this->blob->upload($file, new UploadBlobOptions(
+            'text/plain',
+            initialTransferSize: 0,
+            maximumTransferSize: 8_000_000,
+            httpHeaders: new BlobHttpHeaders(contentHash: $contentHash),
+        ));
+
+        $requests = Server::received();
+
+        self::assertCount(2, $requests);
+        self::assertSame(base64_encode($contentHash), $requests[1]->getHeaderLine('x-ms-blob-content-md5'));
     }
 }
