@@ -104,6 +104,20 @@ class AzureStorageBlobAdapterTest extends TestCase
         self::assertEquals('content', Http::get($temporaryUrl)->body());
 
         /** @phpstan-ignore-next-line */
+        $temporaryUrlWithHeaders = $driver->temporaryUrl('file.txt', now()->addMinute(), [
+            'httpHeaders' => [
+                'contentDisposition' => 'attachment; filename="file.txt"',
+                'contentType' => 'text/plain',
+            ],
+        ]);
+        self::assertIsString($temporaryUrlWithHeaders);
+
+        $temporaryUrlResponse = Http::get($temporaryUrlWithHeaders);
+        self::assertTrue($temporaryUrlResponse->successful());
+        self::assertSame('attachment; filename="file.txt"', $temporaryUrlResponse->header('Content-Disposition'));
+        self::assertStringStartsWith('text/plain', $temporaryUrlResponse->header('Content-Type'));
+
+        /** @phpstan-ignore-next-line */
         $url = $driver->url('file.txt');
         self::assertIsString($url);
         self::assertEquals('content', Http::get($url)->body());
