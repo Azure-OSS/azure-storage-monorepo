@@ -43,6 +43,7 @@
     "guzzlehttp/test-server": "^0.1.0",
     "laravel/pint": "1.20.0",
     "league/flysystem-adapter-test-utilities": "^3.28",
+    "league/flysystem-bundle": "^3.7",
     "orchestra/testbench": "^8.27",
     "phpstan/extension-installer": "^1.4",
     "phpstan/phpstan": "^2.1",
